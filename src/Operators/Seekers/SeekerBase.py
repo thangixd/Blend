@@ -4,11 +4,16 @@ from pathlib import Path
 from src.DBHandler import DBHandler
 
 class Seeker(Operator, ABC):
+    # Subclasses without a 3-feature (cardinality, columns, token-freq) regressor
+    # e.g. NLSeeker, whose input is a free-text query: set this to False to
+    # skip the XGB model load and fall back to the constant cost path.
+    HAS_ML_COST_MODEL: bool = True
+
     def __init__(self, k: int) -> None:
         super().__init__(k)
 
         self._cached_predicted_runtime = None
-        if self.DB.USE_ML_OPTIMIZER:
+        if self.DB.USE_ML_OPTIMIZER and self.HAS_ML_COST_MODEL:
             from xgboost import XGBRegressor
             self.model = XGBRegressor()
             self.model.load_model(Path(__file__).parent / f"{self.__class__.__name__}_model.json")

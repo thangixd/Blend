@@ -1,0 +1,4 @@
+TableId,Context
+0,"Chicago Fire Department engine and ambulance stations: name (engine designation), street address, city, state, zip, and a normalized location field. Useful for spatial queries about emergency-services coverage."
+1,"CTA bus stop catalog with stop_id, cta_stop_name, direction, comma-separated bus routes serving the stop, ward, longitude, latitude, a (lat, lon) location field, and a phase indicator. Useful for transit-network and ward-level mobility analysis."
+2,"Ward survey responses from Chicago residents (November 2022) ranking civic priorities such as Climate and Sustainability, Public Safety, Infrastructure Improvements, Equity and Inclusion, Affordable Housing, Economic/Business Development, and Public Transportation Improvements. Each row is a timestamped response with up to seven ranked issues plus an optional free-text comment."

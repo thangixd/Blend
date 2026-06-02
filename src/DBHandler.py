@@ -7,11 +7,10 @@ import time
 # Typing imports
 from typing import List, Union, Tuple, Iterable
 from numbers import Number
-import pickle
 
 
 class DBHandler(object):
-    USE_ML_OPTIMIZER = True
+    USE_ML_OPTIMIZER = False
     frequency_dict = None
 
     def __init__(self) -> None:
@@ -66,19 +65,23 @@ class DBHandler(object):
             print("-------- Database Configuration --------")
             print(f"Using {dbms.capitalize()} database, with index table {config['Database']['index_table']}")
             if DBHandler.USE_ML_OPTIMIZER:
+                project_root = Path(__file__).parent.parent
+                freqs_path = project_root / "freqs_dict.csv"
                 try:
                     print("Loading frequency dict...", end="", flush=True)
                     start = time.time()
-                    df = pd.read_csv("freqs_dict.csv")
+                    df = pd.read_csv(freqs_path)
                     DBHandler.frequency_dict = dict(zip(df['tokenized'], df['frequency']))
-                    # DBHandler.frequency_dict = pickle.load(open("freqs_dict.pkl", 'rb'))
                     print(f"\rFrequency dict loaded in {time.time() - start:.2f} seconds")
                 except FileNotFoundError as e:
-                    print("Could not load frequency dict")
-                    raise e
+                    raise FileNotFoundError(
+                        f"USE_ML_OPTIMIZER=True but {freqs_path} is missing. "
+                        f"Either generate freqs_dict.csv via the indexing pipeline, "
+                        f"or set DBHandler.USE_ML_OPTIMIZER = False."
+                    ) from e
             else:
                 DBHandler.frequency_dict = {}
-                print("You are not using the ML optimizer, so the frequency dict will not be loaded. Set the USE_ML_OPTIMIZER flag to True to use it.")
+                print("ML optimizer disabled (USE_ML_OPTIMIZER=False); frequency dict not loaded.")
             print("----------------------------------------")
             
 
