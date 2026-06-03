@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from src.NLSeeker.config import NLSeekerConfig
 from src.NLSeeker.db_schema import _read_db_section
 from src.NLSeeker.llm import EmbedBackend, LLMBackend, build_backends, reset_backend_cache
+from src.NLSeeker.predicate import EMPTY_FILTER, TableFilter
 from src.NLSeeker.retrieve import RetrievalResult, _BM25Index, _VectorIndex, open_indexes, search
 
 # Typing imports
 from pathlib import Path
-from typing import Optional
+from typing import List
 
 LOG = logging.getLogger(__name__)
 
@@ -31,7 +32,6 @@ class _NLEngine:
 
     @classmethod
     def get(cls, cfg: NLSeekerConfig, index_name: str = None) -> "_NLEngine":
-        """Return a cached engine for ``(cfg, index_name)``, building it on miss."""
         name = index_name or cfg.index_name
         key = (cfg.signature(), name)
         with _CACHE_LOCK:
@@ -49,13 +49,14 @@ class _NLEngine:
         bm25, vector = open_indexes(vector_path, fulltext_path, index_name, embedder)
         return cls(cfg=cfg, llm=llm, embedder=embedder, _bm25=bm25, _vector=vector)
 
-    def search(self, query: str, k: int = None, n: int = None, alpha: float = None) -> list:
-        """Return up to ``k`` ranked TableIds. Defaults from cfg."""
-        results = self.search_raw(query, k=k, n=n, alpha=alpha)
-        return [r.table_id for r in results]
-
-    def search_raw(self, query: str, k: int = None, n: int = None, alpha: float = None) -> list:
-        """Like search() but returns ``RetrievalResult`` per table."""
+    def search(
+        self,
+        query: str,
+        k: int = None,
+        n: int = None,
+        alpha: float = None,
+        table_filter: TableFilter = EMPTY_FILTER,
+    ) -> List[RetrievalResult]:
         eff_k = self.cfg.default_k if k is None else int(k)
         eff_n = self.cfg.n if n is None else int(n)
         eff_alpha = self.cfg.alpha if alpha is None else float(alpha)
@@ -67,11 +68,12 @@ class _NLEngine:
             k=eff_k,
             n=eff_n,
             alpha=eff_alpha,
+            table_filter=table_filter,
         )
 
 
 def _resolve_index_paths(cfg: NLSeekerConfig, index_name: str) -> tuple:
-    """Resolve index paths via the registry table, falling back to cfg defaults."""
+    """Look up paths in blend_nl_indexes; fall back to cfg defaults."""
     try:
         paths = _fetch_index_paths_readonly(cfg, index_name)
         if paths is not None and paths[0].exists() and paths[1].exists():
@@ -91,13 +93,13 @@ def _resolve_index_paths(cfg: NLSeekerConfig, index_name: str) -> tuple:
 
 
 def _fetch_index_paths_readonly(cfg: NLSeekerConfig, index_name: str):
-    """Read-only lookup that coexists with DBHandler's ro DuckDB handle."""
+    # DuckDB allows multiple read-only handles on the same file, so we open
+    # our own connection rather than borrowing DBHandler's writer.
     db_cfg = _read_db_section()
     dbms = db_cfg["dbms"].lower()
     if dbms == "duckdb":
         import duckdb
 
-        # Multiple read-only handles on the same DuckDB file are allowed.
         con = duckdb.connect(database=db_cfg["path"], read_only=True)
         try:
             cur = con.cursor()
@@ -120,7 +122,6 @@ def _fetch_index_paths_readonly(cfg: NLSeekerConfig, index_name: str):
 
 
 def reset_engine_cache() -> None:
-    """Drop cached engines and clear the backend cache."""
     with _CACHE_LOCK:
         _ENGINE_CACHE.clear()
     reset_backend_cache()

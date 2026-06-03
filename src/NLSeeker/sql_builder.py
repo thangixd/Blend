@@ -6,10 +6,13 @@ from src.DBHandler import DBHandler
 from typing import Sequence
 
 
+# Filter pushdown happens inside retrieval (see NLSeeker.create_sql_query and
+# predicate.py), so the wrapper is just a rank-preserving SELECT plus the
+# LIMIT-k invariant Operators rely on. Some dialects don't preserve VALUES
+# row order - hence the explicit ORDER BY rank.
 _OUTER_TEMPLATE = """
 SELECT TableId
 FROM ({inner}) AS {alias}
-WHERE 1=1 $ADDITIONALS$
 ORDER BY rank ASC
 LIMIT $TOPK$
 """
@@ -46,14 +49,13 @@ def _values_inner(dbms: str, rows: Sequence, alias: str) -> str:
 def values_select_with_rank(
     db: DBHandler,
     table_ids: Sequence[int],
-    additionals: str,
     k: int,
 ) -> str:
     """Wrap a ranked TableId list as a SELECT compatible with Blend's operators.
 
-    NLSeeker retrieves in Python; this preserves rank order via an outer
-    ``ORDER BY rank`` and lets ``$ADDITIONALS$`` from a Combiner filter the
-    result. Empty inputs emit a query that returns zero rows but parses.
+    Filtering is done inside retrieval (see ``parse_additionals``), so no
+    ``$ADDITIONALS$`` substitution happens here. Empty inputs emit a
+    query that returns zero rows but parses.
     """
     seen = {}
     for i, tid in enumerate(table_ids):
@@ -69,7 +71,6 @@ def values_select_with_rank(
         sql = _OUTER_TEMPLATE.format(inner=inner, alias=alias)
 
     sql = sql.replace("$TOPK$", str(int(k)))
-    sql = sql.replace("$ADDITIONALS$", additionals or "")
     return sql
 
 

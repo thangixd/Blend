@@ -11,16 +11,17 @@ import Stemmer
 
 from src.NLSeeker.index_build import parse_doc_id
 from src.NLSeeker.llm import EmbedBackend, LLMBackend
+from src.NLSeeker.predicate import EMPTY_FILTER, TableFilter
 
 # Typing imports
 from pathlib import Path
-from typing import Sequence
+from typing import Iterable, List, Optional, Sequence
 
 LOG = logging.getLogger(__name__)
 
 
 # Two prompts: content blocks (column narrations / row samples) vs context
-# blocks (external metadata). Prompt is picked per candidate by doc-id kind.
+# blocks (external metadata). Picked per candidate by doc-id kind.
 _CONTENT_RERANK_PROMPT = (
     "Given a table with the following columns:\n"
     "*/\n"
@@ -78,11 +79,22 @@ def _minmax(scores: dict) -> dict:
     values = list(scores.values())
     lo, hi = min(values), max(values)
     if hi <= lo:
-        # All-equal (e.g. BM25 zero scores on a one-term query): map to 1.0
-        # so docs still contribute to the fusion.
+        # All-equal (e.g. BM25 zeroes on a one-term query): map to 1.0 so
+        # docs still contribute to the fusion.
         return {k: 1.0 for k in scores}
     span = hi - lo
     return {k: (v - lo) / span for k, v in scores.items()}
+
+
+def _topk_indices(scores: np.ndarray, k: int) -> np.ndarray:
+    n = scores.shape[0]
+    if k <= 0 or n == 0:
+        return np.empty(0, dtype=np.int64)
+    k = min(k, n)
+    if k == n:
+        return np.argsort(-scores, kind="stable")
+    part = np.argpartition(-scores, k - 1)[:k]
+    return part[np.argsort(-scores[part], kind="stable")]
 
 
 class _BM25Index:
@@ -92,10 +104,16 @@ class _BM25Index:
         self._retriever = bm25s.BM25.load(str(fulltext_path), load_corpus=True)
         self._stemmer = Stemmer.Stemmer("english")
         self._corpus_size = len(self._retriever.corpus)
-        self._doc_id_to_corpus_idx = {
-            entry["doc_id"]: idx
-            for idx, entry in enumerate(self._retriever.corpus)
-        }
+
+        self._doc_id_to_corpus_idx: dict = {}
+        self._doc_id_to_table_id: dict = {}
+        self._table_id_to_doc_ids: dict = {}
+        for idx, entry in enumerate(self._retriever.corpus):
+            did = entry["doc_id"]
+            tid = int(entry["table_id"])
+            self._doc_id_to_corpus_idx[did] = idx
+            self._doc_id_to_table_id[did] = tid
+            self._table_id_to_doc_ids.setdefault(tid, []).append(did)
 
     def _tokenize(self, query: str):
         return bm25s.tokenize(
@@ -105,16 +123,59 @@ class _BM25Index:
             show_progress=False,
         )
 
-    def retrieve(self, query: str, k: int) -> tuple:
-        """Return ``({doc_id: (bm25_score, doc_text)}, query_tokens)``."""
+    def doc_ids_for_tables(self, table_ids: Iterable[int]) -> set:
+        out: set = set()
+        for tid in table_ids:
+            out.update(self._table_id_to_doc_ids.get(int(tid), ()))
+        return out
+
+    def all_doc_ids(self) -> set:
+        return set(self._doc_id_to_corpus_idx)
+
+    def retrieve(
+        self,
+        query: str,
+        k: int,
+        allowed_doc_ids: Optional[set] = None,
+    ) -> tuple:
+        """With ``allowed_doc_ids`` set, top-k is taken inside the allow-list
+        via ``get_scores`` over the full corpus. Without, defer to native top-k.
+        """
         if k <= 0 or self._corpus_size == 0:
             return {}, None
-        effective_k = min(k, self._corpus_size)
         q_tokens = self._tokenize(query)
-        docs, scores = self._retriever.retrieve(q_tokens, k=effective_k, show_progress=False)
+
+        if allowed_doc_ids is None:
+            effective_k = min(k, self._corpus_size)
+            docs, scores = self._retriever.retrieve(
+                q_tokens, k=effective_k, show_progress=False
+            )
+            out = {}
+            for doc, score in zip(docs[0], scores[0]):
+                out[doc["doc_id"]] = (float(score), doc["text"])
+            return out, q_tokens
+
+        if not allowed_doc_ids:
+            return {}, q_tokens
+        query_terms = convert_tokenized_to_string_list(q_tokens)[0]
+        all_scores = self._retriever.get_scores(query_terms)
+        allowed_idxs = []
+        allowed_dids = []
+        for did in allowed_doc_ids:
+            idx = self._doc_id_to_corpus_idx.get(did)
+            if idx is None:
+                continue
+            allowed_idxs.append(idx)
+            allowed_dids.append(did)
+        if not allowed_idxs:
+            return {}, q_tokens
+        sub_scores = np.asarray([all_scores[i] for i in allowed_idxs], dtype=np.float64)
+        order = _topk_indices(sub_scores, k)
         out = {}
-        for doc, score in zip(docs[0], scores[0]):
-            out[doc["doc_id"]] = (float(score), doc["text"])
+        for j in order:
+            did = allowed_dids[j]
+            corpus_entry = self._retriever.corpus[allowed_idxs[j]]
+            out[did] = (float(sub_scores[j]), corpus_entry["text"])
         return out, q_tokens
 
     def score_for_ids(self, q_tokens, doc_ids):
@@ -134,7 +195,13 @@ class _BM25Index:
 
 
 class _VectorIndex:
-    """ChromaDB collection wrapper. Borrows the embedder from the engine."""
+    """ChromaDB-backed embeddings, queried via exact numpy cosine.
+
+    Chroma is the on-disk persistence layer only. At open time we read
+    the full ``(N, D)`` matrix into memory once, L2-normalize it, and
+    answer every retrieval with a single dense matvec. HNSW is not
+    consulted at query time.
+    """
 
     def __init__(self, vector_path: Path, collection_name: str, embedder: EmbedBackend) -> None:
         # See NLIndexBuilder.start for why the cache is cleared here.
@@ -147,49 +214,101 @@ class _VectorIndex:
         self._embedder = embedder
         self._collection_size = self._collection.count()
 
-    def retrieve(self, query: str, k: int) -> tuple:
-        """Return ``({doc_id: (cos_similarity, doc_text)}, query_embedding)``."""
+        self._all_doc_ids: list = []
+        self._all_documents: list = []
+        self._all_embeddings: np.ndarray = np.empty((0, 0), dtype=np.float32)
+        self._doc_id_to_row: dict = {}
+
+        if self._collection_size == 0:
+            return
+        bundle = self._collection.get(include=["documents", "embeddings"])
+        ids = bundle["ids"]
+        documents = bundle["documents"] or [""] * len(ids)
+        embeddings = bundle["embeddings"]
+        mat = np.asarray(embeddings, dtype=np.float32)
+        if mat.ndim != 2 or mat.shape[0] != len(ids):
+            raise RuntimeError(
+                f"NLSeeker vector collection {collection_name!r}: expected a "
+                f"2-D embedding matrix with {len(ids)} rows, got shape {mat.shape}."
+            )
+        # Normalize once so ``mat @ q_norm`` is the cosine similarity.
+        # Zero-vectors stay zero; clamp denominator against fp noise.
+        norms = np.linalg.norm(mat, axis=1, keepdims=True)
+        norms = np.where(norms > 0, norms, 1.0)
+        self._all_doc_ids = list(ids)
+        self._all_documents = [d or "" for d in documents]
+        self._all_embeddings = mat / norms
+        self._doc_id_to_row = {did: i for i, did in enumerate(self._all_doc_ids)}
+
+    def _normalize_query(self, query: str) -> Optional[np.ndarray]:
+        if self._collection_size == 0:
+            return None
+        vec = self._embedder.encode([query])
+        q = np.asarray(vec[0], dtype=np.float32)
+        n = float(np.linalg.norm(q))
+        if n <= 0:
+            return q
+        return q / n
+
+    def retrieve(
+        self,
+        query: str,
+        k: int,
+        allowed_doc_ids: Optional[set] = None,
+    ) -> tuple:
         if k <= 0 or self._collection_size == 0:
             return {}, None
-        effective_k = min(k, self._collection_size)
-        vec = self._embedder.encode([query])
-        result = self._collection.query(
-            query_embeddings=vec.tolist(),
-            n_results=effective_k,
-            include=["documents", "distances"],
-        )
-        ids = result["ids"][0]
-        distances = result["distances"][0]
-        documents = result["documents"][0]
+        q = self._normalize_query(query)
+        if q is None:
+            return {}, None
+
+        if allowed_doc_ids is None:
+            scores = self._all_embeddings @ q
+            order = _topk_indices(scores, k)
+            out = {}
+            for i in order:
+                did = self._all_doc_ids[i]
+                sim = max(0.0, float(scores[i]))
+                out[did] = (sim, self._all_documents[i])
+            return out, q
+
+        if not allowed_doc_ids:
+            return {}, q
+        rows = []
+        dids = []
+        for did in allowed_doc_ids:
+            r = self._doc_id_to_row.get(did)
+            if r is None:
+                continue
+            rows.append(r)
+            dids.append(did)
+        if not rows:
+            return {}, q
+        sub = self._all_embeddings[rows]
+        scores = sub @ q
+        order = _topk_indices(scores, k)
         out = {}
-        for did, dist, doc in zip(ids, distances, documents):
-            # Cosine distance → similarity, clamped against fp noise.
-            sim = max(0.0, 1.0 - float(dist))
-            out[did] = (sim, doc or "")
-        return out, vec[0]
+        for j in order:
+            did = dids[j]
+            sim = max(0.0, float(scores[j]))
+            out[did] = (sim, self._all_documents[rows[j]])
+        return out, q
 
     def score_for_ids(self, query_vec, doc_ids):
         """Score ``doc_ids`` not present in the top-k list."""
         if not doc_ids:
             return {}
-        ids = list(doc_ids)
-        result = self._collection.get(
-            ids=ids,
-            include=["documents", "embeddings"],
-        )
-        # Chroma may reorder; rebuild the parallel arrays by id.
-        got_ids = result["ids"]
-        embeddings = result["embeddings"]
-        documents = result["documents"]
-        q = np.asarray(query_vec, dtype=np.float64)
-        qn = np.linalg.norm(q)
+        q = np.asarray(query_vec, dtype=np.float32)
+        n = float(np.linalg.norm(q))
+        q_norm = q if n <= 0 else q / n
         out = {}
-        for did, emb, doc in zip(got_ids, embeddings, documents):
-            v = np.asarray(emb, dtype=np.float64)
-            denom = qn * np.linalg.norm(v)
-            sim = float(q @ v / denom) if denom > 0 else 0.0
+        for did in doc_ids:
+            r = self._doc_id_to_row.get(did)
+            if r is None:
+                continue
+            sim = float(self._all_embeddings[r] @ q_norm)
             sim = max(0.0, sim)
-            out[did] = (sim, doc or "")
+            out[did] = (sim, self._all_documents[r])
         return out
 
 
@@ -200,17 +319,34 @@ def hybrid_retrieve(
     k: int,
     n: int,
     alpha: float,
-) -> list:
-    """Fuse BM25 and vector signals into a ranked list of ``HybridResult``.
+    table_filter: TableFilter = EMPTY_FILTER,
+) -> List[HybridResult]:
+    """Fuse BM25 and vector signals into a ranked candidate pool.
 
-    Each retriever fetches ``k * n`` candidates; ids found by only one are
-    backfilled against the other; scores are min-max normalised per modality
-    and combined as ``alpha * bm25 + (1 - alpha) * vector``. The full pool
-    is returned (rerank truncates to ``k`` later).
+    Each retriever fetches ``k * n``; ids found by only one are backfilled
+    against the other; scores are min-max normalised per modality and
+    combined as ``alpha * bm25 + (1 - alpha) * vector``. The full pool is
+    returned - rerank truncates to ``k`` later.
+
+    A non-empty ``table_filter`` restricts both retrievers to the
+    corresponding doc-id allow-set. The canonical doc-id universe is
+    BM25's, since BM25 and vector are populated from the same triples.
     """
     fetch = max(1, k * n)
-    bm25_raw, q_tokens = bm25.retrieve(query, fetch)
-    vec_raw, query_vec = vector.retrieve(query, fetch)
+
+    allowed_doc_ids: Optional[set] = None
+    if not table_filter.is_empty():
+        universe = bm25.all_doc_ids()
+        if table_filter.allow is not None:
+            universe &= bm25.doc_ids_for_tables(table_filter.allow)
+        if table_filter.deny is not None:
+            universe -= bm25.doc_ids_for_tables(table_filter.deny)
+        allowed_doc_ids = universe
+        if not allowed_doc_ids:
+            return []
+
+    bm25_raw, q_tokens = bm25.retrieve(query, fetch, allowed_doc_ids=allowed_doc_ids)
+    vec_raw, query_vec = vector.retrieve(query, fetch, allowed_doc_ids=allowed_doc_ids)
 
     bm25_missing = set(vec_raw) - set(bm25_raw)
     vec_missing = set(bm25_raw) - set(vec_raw)
@@ -237,8 +373,8 @@ def hybrid_retrieve(
                 fused_score=alpha * bm + (1.0 - alpha) * ve,
             )
         )
-    # Sort by fused score desc, then doc_id asc to stay deterministic across
-    # processes (PYTHONHASHSEED randomises set iteration).
+    # doc_id tiebreak keeps results deterministic across processes
+    # (PYTHONHASHSEED randomises set iteration).
     fused.sort(key=lambda r: (-r.fused_score, r.doc_id))
     return fused[:fetch]
 
@@ -251,8 +387,8 @@ def llm_rerank(
     query: str,
     candidates: Sequence[HybridResult],
     llm: LLMBackend,
-) -> list:
-    """Run the LLM yes/no judge once per candidate; relevant ones first."""
+) -> List[tuple]:
+    """Yes/no judge per candidate; relevant ones bubble to the front."""
     if not candidates:
         return []
     prompts = [_rerank_prompt_for(c.doc_id, c.text, query) for c in candidates]
@@ -271,13 +407,16 @@ def search(
     k: int,
     n: int,
     alpha: float,
-) -> list:
-    """Hybrid retrieve, rerank with the LLM, truncate to ``k``, dedupe by table.
+    table_filter: TableFilter = EMPTY_FILTER,
+) -> List[RetrievalResult]:
+    """Hybrid retrieve → LLM rerank → truncate to ``k`` → dedupe by table.
 
-    Truncation happens before deduping, so the result can hold fewer than
-    ``k`` entries when one table dominates several top positions.
+    Truncation precedes deduping, so the result can hold fewer than ``k``
+    entries when one table dominates several top positions.
     """
-    fused = hybrid_retrieve(query, bm25, vector, k=k, n=n, alpha=alpha)
+    fused = hybrid_retrieve(
+        query, bm25, vector, k=k, n=n, alpha=alpha, table_filter=table_filter
+    )
     if not fused:
         return []
 
@@ -309,7 +448,6 @@ def open_indexes(
     collection_name: str,
     embedder: EmbedBackend,
 ) -> tuple:
-    """Load both indexes from disk."""
     return _BM25Index(fulltext_path), _VectorIndex(vector_path, collection_name, embedder)
 
 

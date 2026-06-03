@@ -2,6 +2,9 @@ from src.NLSeeker.config import NLSeekerConfig
 from src.NLSeeker.engine import _NLEngine
 from src.NLSeeker.retrieve import RetrievalResult
 
+# Typing imports
+from typing import List
+
 
 class NLSeekerStandalone:
     """Run NLSeeker retrieval without going through a Plan."""
@@ -20,10 +23,10 @@ class NLSeekerStandalone:
         k: int = None,
         n: int = None,
         alpha: float = None,
-    ) -> list:
-        """Return up to ``k`` ranked TableIds. Defaults from cfg."""
+    ) -> List[int]:
         engine = _NLEngine.get(self._cfg, index_name=self._index_name)
-        return engine.search(query=query, k=k, n=n, alpha=alpha)
+        results = engine.search(query=query, k=k, n=n, alpha=alpha)
+        return [r.table_id for r in results]
 
     def search_raw(
         self,
@@ -31,14 +34,13 @@ class NLSeekerStandalone:
         k: int = None,
         n: int = None,
         alpha: float = None,
-    ) -> list:
-        """Like search() but returns ``RetrievalResult`` per table."""
+    ) -> List[RetrievalResult]:
+        """Like ``search`` but returns the full ``RetrievalResult`` per table."""
         engine = _NLEngine.get(self._cfg, index_name=self._index_name)
-        return engine.search_raw(query=query, k=k, n=n, alpha=alpha)
+        return engine.search(query=query, k=k, n=n, alpha=alpha)
 
 
-def nl_search(query: str, k: int = 10) -> list:
-    """One-shot wrapper around NLSeekerStandalone."""
+def nl_search(query: str, k: int = 10) -> List[int]:
     return NLSeekerStandalone().search(query, k=k)
 
 

@@ -97,7 +97,8 @@ class MultiColumnOverlap(Seeker):
         g = input_cpy.groupby([input_cpy.columns.values[0]])
         gd = defaultdict(list)
         for key, item in g:
-            gd[str(key[0])] = g.get_group(key[0]).values
+            token_key = str(key[0]) if isinstance(key, tuple) else str(key)
+            gd[token_key] = item.values
 
         candidate_external_row_ids = []
         candidate_external_col_ids = []
@@ -128,7 +129,14 @@ class MultiColumnOverlap(Seeker):
                         top_joinable_tables[0][0]):
                     break
                 rowid = hit[0]
-                superkey = int(hit[1], 2)
+                # super_key is a 128-bit XASH packed two ways depending on the
+                # DBMS: Vertica yields a bit-string via ``TO_BITSTRING(...)``,
+                # Postgres/DuckDB store the column as a ``"0x...":VARCHAR`` hex
+                raw = hit[1]
+                if isinstance(raw, str) and raw.lower().startswith('0x'):
+                    superkey = int(raw, 16)
+                else:
+                    superkey = int(raw, 2)
                 token = hit[2]
                 colid = hit[3]
                 relevant_input_rows = gd[token]

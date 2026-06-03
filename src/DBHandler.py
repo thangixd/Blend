@@ -100,9 +100,11 @@ class DBHandler(object):
     def execute_and_fetchall(self, query: str) -> List[Union[Tuple, List]]:
         """Returns results"""
         query = self.clean_query(query)
-        if self.dbms == 'postgres':
-            query = query.replace('TO_BITSTRING(superkey)', f'superkey')
-        query.replace('TO_BITSTRING(superkey)', f'superkey')
+        # ``TO_BITSTRING(superkey)`` is a Vertica function (BINARY to bit-string).
+        # On Postgres and DuckDB the column is already a hex VARCHAR, so
+        # the wrapper is a no-op there and would otherwise be a parse error.
+        if self.dbms in ('postgres', 'duckdb'):
+            query = query.replace('TO_BITSTRING(superkey)', 'superkey')
         query = query.replace('CellValue', 'tokenized').replace("superkey", "super_key").replace("ColumnId", "colid")
 
         self.cursor.execute(query)
