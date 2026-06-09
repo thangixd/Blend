@@ -12,6 +12,7 @@ LOG = logging.getLogger(__name__)
 
 
 class ParityMismatch(RuntimeError):
+    pass
 
 
 @dataclass(frozen=True)

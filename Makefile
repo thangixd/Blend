@@ -1,10 +1,12 @@
 PYTHON ?= .venv/bin/python
+COMPOSE ?= docker compose
 
 .DEFAULT_GOAL := help
 .PHONY: help install index test test-index test-clean clean \
         benchmark-prepare benchmark-index benchmark benchmark-clean \
         benchmark-all benchmark-compare benchmark-clean-all \
-        benchmark-test benchmark-test-vllm
+        benchmark-test benchmark-test-vllm \
+        build up down shell bench logs
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -93,3 +95,27 @@ benchmark-test:  ## Run benchmark unit tests (no vLLM needed).
 
 benchmark-test-vllm:  ## Run the live smoke test (requires vLLM containers on :8001/:8002).
 	$(PYTHON) -m pytest tests/test_benchmark/ -m requires_vllm
+
+
+build:  ## Build the Blend Docker image.
+	$(COMPOSE) build
+
+up: build  ## Build + start the Blend container in the background (host networking → reaches vLLMs on 127.0.0.1:8001-8005).
+	$(COMPOSE) up -d
+	@echo ""
+	@echo "  blend container is up."
+	@echo "    make shell  → bash inside the container"
+	@echo "    make bench  → run benchmark-all inside the container"
+	@echo "    make down   → stop the container"
+
+down:  ## Stop the Blend container.
+	$(COMPOSE) down
+
+shell:  ## Open bash inside the running blend container.
+	$(COMPOSE) exec blend bash
+
+bench:  ## Run `make benchmark-all` inside the container (results land in benchmark-data/results/ on the host).
+	$(COMPOSE) exec blend make benchmark-all
+
+logs:  ## Tail the blend container's logs.
+	$(COMPOSE) logs -f blend

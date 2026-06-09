@@ -1,0 +1,18 @@
+services:
+  blend:
+    build: .
+    image: blend:latest
+    container_name: blend
+    network_mode: host
+    working_dir: /app
+
+    volumes:
+      - ./benchmark-data:/app/benchmark-data
+      - ./EvaluationDataFromPneuma:/app/EvaluationDataFromPneuma:ro
+      - ./Makefile:/app/Makefile:ro
+
+    environment:
+      PYTHONHASHSEED: "0"
+
+    command: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped

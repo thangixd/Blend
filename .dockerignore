@@ -1,0 +1,32 @@
+benchmark-data/
+EvaluationDataFromPneuma/
+nl-out/
+test_nl-out/
+test_duckdb
+*.duckdb
+*.duckdb.wal
+
+.venv/
+
+# Python bytecode + caches.
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Build artifacts.
+build/
+dist/
+
+
+.git/
+.gitignore
+.idea/
+.vscode/
+
+docs/
+images/
+benchmarks/
+*.md
+!README.md
