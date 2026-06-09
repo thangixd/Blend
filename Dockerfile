@@ -17,6 +17,8 @@ COPY Makefile ./
 
 RUN uv sync --frozen
 
+RUN /app/.venv/bin/python -c "import duckdb; duckdb.connect('/app/blend.duckdb').close()"
+
 ENV PATH="/app/.venv/bin:${PATH}"
 ENV PYTHONHASHSEED=0
 ENV PYTHONUNBUFFERED=1
