@@ -45,6 +45,9 @@ packages = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "requires_vllm: integration test that needs the vLLM containers running on :8001 and :8002",
+]
 filterwarnings = [
     "ignore:Accessing the 'model_fields' attribute on the instance is deprecated:DeprecationWarning",
     "ignore:.*pydantic.*:DeprecationWarning",

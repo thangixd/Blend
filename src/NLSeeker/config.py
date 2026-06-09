@@ -24,8 +24,13 @@ class NLSeekerConfig:
     hf_token: str = ""
     openai_api_key: str = ""
     openai_base_url: str = ""
+    openai_embed_base_url: str = ""
     openai_llm_model: str = "gpt-4o-mini"
+    openai_llm_max_input_tokens: int = 8191
+    openai_llm_tokenizer_id: str = ""
     openai_embed_model: str = "text-embedding-3-small"
+    openai_embed_max_input_tokens: int = 8191
+    openai_embed_tokenizer_id: str = ""
     alpha: float = 0.5
     n: int = 5
     default_k: int = 10
@@ -73,8 +78,13 @@ class NLSeekerConfig:
                 "llm_path",
                 "embed_path",
                 "openai_base_url",
+                "openai_embed_base_url",
                 "openai_llm_model",
+                "openai_llm_max_input_tokens",
+                "openai_llm_tokenizer_id",
                 "openai_embed_model",
+                "openai_embed_max_input_tokens",
+                "openai_embed_tokenizer_id",
                 "alpha",
                 "n",
                 "default_k",

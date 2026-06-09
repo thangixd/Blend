@@ -7,9 +7,14 @@ they share the same integer ``TableId`` namespace.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import logging
+import multiprocessing
+import os
 import sys
+import threading
 from configparser import ConfigParser
+from concurrent.futures import ProcessPoolExecutor
 from glob import glob
 from pathlib import Path
 from typing import Iterable, Optional
@@ -20,10 +25,11 @@ from tqdm import tqdm
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from src.NLSeeker.config import NLSeekerConfig  
-from src.NLSeeker.index_build import NLIndexBuilder 
-from src.NLSeeker.llm import build_backends  
-from src.utils import df_to_index 
+from src.NLSeeker.config import NLSeekerConfig
+from src.NLSeeker.index_build import NLIndexBuilder
+from src.NLSeeker.llm import build_backends
+from src.utils import df_to_index
+from scripts import _blend_ingest_worker
 
 LOG = logging.getLogger("create_blend_index")
 
@@ -158,6 +164,150 @@ def _insert_index_rows(cursor, dbms: str, table_name: str, df: pd.DataFrame) -> 
         )
 
 
+def _sink_one(cursor, con, dbms: str, table_name: str, result) -> None:
+    """Insert one ``WorkerResult`` into ``table_name``.
+
+    For DuckDB we register the Arrow table as a temporary view and ingest it
+    via ``INSERT INTO ... SELECT FROM <view>`` — zero-copy, vectorised, and
+    far faster than ``executemany``. The explicit column list is the
+    byte-identity firewall: the worker's Arrow column names come from
+    df_to_index's ``CellValue, TableId, ColumnId, RowId, SuperKey, Quadrant``
+    and we map them to the existing schema's
+    ``(tokenized, tableid, colid, rowid, super_key, quadrant)``.
+
+    For Postgres / Vertica we convert the Arrow table back to a DataFrame
+    and delegate to the existing ``_insert_index_rows`` executemany sink —
+    those backends benefit from the parallel CPU compute but keep their
+    current bulk-load path.
+    """
+    if result.value_shard is None:
+        # Empty-table skip mirrors the sequential `if df.empty: continue`.
+        return
+    if dbms == "duckdb":
+        # Register the view on `cursor`, not `con`: DuckDB's con.cursor()
+        # returns an independent DuckDBPyConnection whose registered-view
+        # namespace is separate from the parent connection's. Registering on
+        # `con` would leave the view invisible to the cursor that runs the
+        # INSERT, raising "Table with name blend_shard does not exist".
+        cursor.register("blend_shard", result.value_shard)
+        try:
+            cursor.execute(
+                f"INSERT INTO {table_name} "
+                "(tokenized, tableid, colid, rowid, super_key, quadrant) "
+                "SELECT CellValue, TableId, ColumnId, RowId, SuperKey, Quadrant "
+                "FROM blend_shard"
+            )
+        finally:
+            cursor.unregister("blend_shard")
+    else:
+        df = result.value_shard.to_pandas()
+        _insert_index_rows(cursor, dbms, table_name, df)
+
+
+def _run_parallel_ingest(
+    files: list[tuple[int, Path]],
+    cursor,
+    con,
+    dbms: str,
+    table_name: str,
+    workers: int,
+    nl_builder,
+    contexts_by_tid: dict[int, list[str]],
+) -> None:
+    """Run per-table value-index compute in a process pool, sink each shard
+    in submission order, and drive the NL builder in lockstep.
+
+    Submission order is ``_iter_lake()`` order, so ``nl_builder.add_table()``
+    is called in exactly the same order as the sequential pipeline.
+
+    The transaction boundary lives here: we BEGIN before the first shard
+    and COMMIT after the last; on any exception we ROLLBACK and DROP the
+    partially-built ``table_name`` so the on-disk database is left clean.
+    """
+    want_raw = nl_builder is not None
+
+    if dbms == "duckdb":
+        cursor.execute("BEGIN TRANSACTION")
+
+    try:
+        if workers <= 1:
+            LOG.info(
+                "Value-index ingest in single-process mode (workers=%d, lake=%d)",
+                workers, len(files),
+            )
+            for table_id, file_path in tqdm(files, desc="Tables"):
+                result = _blend_ingest_worker.build_value_shard(
+                    table_id, str(file_path), want_raw
+                )
+                _sink_one(cursor, con, dbms, table_name, result)
+                if nl_builder is not None and result.raw_table is not None:
+                    nl_builder.add_table(
+                        table_id,
+                        result.raw_table.to_pandas(),
+                        contexts=contexts_by_tid.get(table_id),
+                    )
+        else:
+            LOG.info(
+                "Parallel value-index ingest with %d workers (lake=%d)",
+                workers, len(files),
+            )
+            # Bounded in-flight cap: at most workers*2 pending futures.
+            # Without this the executor would happily queue every file in the
+            # lake, and memory would scale with lake size, not pool size.
+            inflight = threading.Semaphore(workers * 2)
+            with ProcessPoolExecutor(
+                max_workers=workers,
+                mp_context=multiprocessing.get_context("spawn"),
+            ) as pool:
+                try:
+                    futures: list[concurrent.futures.Future] = []
+                    for table_id, file_path in files:
+                        inflight.acquire()
+                        fut = pool.submit(
+                            _blend_ingest_worker.build_value_shard,
+                            table_id, str(file_path), want_raw,
+                        )
+                        fut.add_done_callback(lambda _f: inflight.release())
+                        futures.append(fut)
+
+                    for tid_path, fut in zip(files, tqdm(futures, desc="Tables")):
+                        table_id = tid_path[0]
+                        result = fut.result()  # raises in submission order
+                        _sink_one(cursor, con, dbms, table_name, result)
+                        if nl_builder is not None and result.raw_table is not None:
+                            nl_builder.add_table(
+                                table_id,
+                                result.raw_table.to_pandas(),
+                                contexts=contexts_by_tid.get(table_id),
+                            )
+                except BaseException:
+                    # Drop queued-but-not-started work promptly; let the with
+                    # block's exit join the workers.
+                    pool.shutdown(wait=False, cancel_futures=True)
+                    raise
+
+        if dbms == "duckdb":
+            cursor.execute("COMMIT")
+        else:
+            con.commit()
+    except BaseException:
+        if dbms == "duckdb":
+            try:
+                cursor.execute("ROLLBACK")
+            except Exception:
+                pass
+            try:
+                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+            except Exception:
+                pass
+        else:
+            try:
+                con.rollback()
+            except Exception:
+                pass
+        raise
+
+
 def _iter_lake(lake_path: str) -> list[tuple[int, Path]]:
     """Enumerate the lake into ``[(TableId, Path), ...]``.
 
@@ -212,6 +362,7 @@ def run_pipeline(
     nl_index: bool,
     nl_config_overrides: Optional[dict] = None,
     metadata_path: Optional[Path] = None,
+    workers: int = 1,
 ) -> None:
     """End-to-end driver shared by the CLI and any programmatic caller.
 
@@ -251,29 +402,16 @@ def run_pipeline(
     con, cursor, dbms = _open_writer(db_cfg)
     try:
         _create_value_index_table(cursor, dbms, table_name)
-        for table_id, file_path in tqdm(files, desc="Tables"):
-            df = _read_table(file_path)
-            if df.empty:
-                LOG.warning("TableId=%d (%s) is empty - skipping", table_id, file_path.name)
-                continue
-
-            # _df_for_value_index copies before stamping columns.name, so df
-            # is unmutated and safe to hand to the NL builder afterwards.
-            value_rows = _df_for_value_index(table_id, df)
-            _insert_index_rows(cursor, dbms, table_name, value_rows)
-
-            if nl_builder is not None:
-                nl_builder.add_table(
-                    table_id,
-                    df,
-                    contexts=contexts_by_tid.get(table_id),
-                )
-
-        con.commit() if dbms != "duckdb" else None
-    except Exception:
-        if dbms != "duckdb":
-            con.rollback()
-        raise
+        _run_parallel_ingest(
+            files=files,
+            cursor=cursor,
+            con=con,
+            dbms=dbms,
+            table_name=table_name,
+            workers=workers,
+            nl_builder=nl_builder,
+            contexts_by_tid=contexts_by_tid,
+        )
     finally:
         cursor.close()
         con.close()
@@ -327,11 +465,24 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=min((os.cpu_count() or 2) - 1, 16),
+        help=(
+            "Process-pool size for parallel value-index ingestion. "
+            "Default: min(cpu_count - 1, 16). Pass 1 to disable the pool "
+            "(single-process fast path; identical to the pre-parallel build)."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.workers < 1:
+        raise SystemExit("--workers must be >= 1")
+    return args
 
 
 def main(argv: Optional[list[str]] = None) -> None:
@@ -350,6 +501,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         config_path=args.config,
         nl_index=args.nl_index,
         metadata_path=metadata_path if args.nl_index else None,
+        workers=args.workers,
     )
 
 

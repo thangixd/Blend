@@ -83,8 +83,13 @@ def generate_row_samples(df: pd.DataFrame) -> list:
 
 
 def _token_count(text: str, embedder: EmbedBackend) -> int:
-    inner = getattr(embedder, "_model", None)
-    tok = getattr(inner, "tokenizer", None) if inner is not None else None
+    # _HFEmbedder exposes its sentence-transformers model as ._model with a
+    # .tokenizer attribute; _OpenAIEmbedder exposes a .tokenizer property
+    # (lazily loaded from openai_embed_tokenizer_id).
+    tok = getattr(embedder, "tokenizer", None)
+    if tok is None:
+        inner = getattr(embedder, "_model", None)
+        tok = getattr(inner, "tokenizer", None) if inner is not None else None
     if tok is not None:
         try:
             return len(tok.encode(text, add_special_tokens=False))

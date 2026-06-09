@@ -1,18 +1,23 @@
 import gc
 import logging
 import threading
-from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 import numpy as np
 
 from src.NLSeeker.config import NLSeekerConfig
 
 # Typing imports
-from typing import Optional, Protocol, Sequence
+from typing import Any, Optional, Protocol, Sequence
 
 LOG = logging.getLogger(__name__)
 
 _BACKEND_CACHE: dict = {}
 _CACHE_LOCK = threading.Lock()
+
+# Number of in-flight HTTP requests against the OpenAI/vLLM endpoint per
+# generate() call.
+_OPENAI_LLM_CONCURRENCY = 256
 
 
 class LLMBackend(Protocol):
@@ -182,6 +187,8 @@ class _OpenAILLM:
     api_key: str
     base_url: str = ""
     _max_input_tokens: int = 8191
+    tokenizer_id: str = ""
+    _tokenizer: Optional[Any] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         import openai
@@ -203,12 +210,85 @@ class _OpenAILLM:
     def max_input_tokens(self) -> int:
         return self._max_input_tokens
 
+    @property
+    def tokenizer(self):
+        if self._tokenizer is None and self.tokenizer_id:
+            from transformers import AutoTokenizer
+            self._tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_id)
+        return self._tokenizer
+
+    def _truncate_prompt(self, prompt: str, max_new_tokens: int) -> str:
+        tok = self.tokenizer
+        if tok is None:
+            return prompt
+
+        # Target rendered length, leaving a small safety headroom for any
+        # template-rendering quirks the empty-user baseline cannot capture.
+        target_total = self._max_input_tokens - max_new_tokens - 8
+
+        def _render_len(text: str) -> int:
+            try:
+                ids = tok.apply_chat_template(
+                    [{"role": "user", "content": text}],
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    return_dict=False,
+                )
+                # Newer transformers can still hand back a BatchEncoding when
+                # ``return_dict=False`` is silently ignored; pull the ids out.
+                if hasattr(ids, "keys") and "input_ids" in ids:
+                    ids = ids["input_ids"]
+                return len(ids)
+            except Exception:
+                # Fallback: assume a 16-token chat-template overhead.
+                return len(tok.tokenize(text)) + 16
+
+        if _render_len(prompt) <= target_total:
+            return prompt
+
+        try:
+            base_obj = tok.apply_chat_template(
+                [{"role": "user", "content": ""}],
+                tokenize=True,
+                add_generation_prompt=True,
+                return_dict=False,
+            )
+            if hasattr(base_obj, "keys") and "input_ids" in base_obj:
+                base_obj = base_obj["input_ids"]
+            base_len = len(base_obj)
+        except Exception:
+            base_len = 16
+        tokens = tok.tokenize(prompt)
+        budget = max(1, target_total - base_len)
+        truncated = tok.convert_tokens_to_string(tokens[:budget])
+
+        # Verification loop: re-render and shave 64 tokens at a time if the
+        # round-trip inflated the count. Caps at a few iterations so a
+        # pathological tokenizer cannot loop forever.
+        for _ in range(8):
+            if _render_len(truncated) <= target_total:
+                return truncated
+            budget = max(1, budget - 64)
+            truncated = tok.convert_tokens_to_string(tokens[:budget])
+        return truncated
+
     def generate(self, prompts: Sequence[str], max_new_tokens: int) -> list:
-        out = []
-        for prompt in prompts:
+        prompt_list = list(prompts)
+        n = len(prompt_list)
+        if n == 0:
+            return []
+
+        # Warm up the lazy tokenizer property once before fanning out so
+        # concurrent _truncate_prompt callers don't race on the
+        # AutoTokenizer.from_pretrained() in self.tokenizer.
+        if self.tokenizer_id:
+            _ = self.tokenizer
+
+        def _one(prompt: str) -> str:
+            safe_prompt = self._truncate_prompt(prompt, max_new_tokens)
             kwargs = {
                 "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": safe_prompt}],
                 "max_tokens": max_new_tokens,
                 "temperature": 0.0,
             }
@@ -216,7 +296,21 @@ class _OpenAILLM:
             if not self.base_url:
                 kwargs["seed"] = 42
             resp = self._client.chat.completions.create(**kwargs)
-            out.append((resp.choices[0].message.content or "").strip())
+            return (resp.choices[0].message.content or "").strip()
+
+        # Concurrency=1 fast path keeps the call structure (and stack trace
+        # on errors) identical to the original serial loop.
+        if n == 1 or _OPENAI_LLM_CONCURRENCY <= 1:
+            return [_one(p) for p in prompt_list]
+
+        workers = min(_OPENAI_LLM_CONCURRENCY, n)
+        out: list = [None] * n
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            # executor.map preserves submission order in the returned
+            # iterator, so the i-th completion ends up in out[i] without
+            # any explicit index threading.
+            for i, completion in enumerate(pool.map(_one, prompt_list)):
+                out[i] = completion
         return out
 
 
@@ -228,6 +322,8 @@ class _OpenAIEmbedder:
     batch_size: int = 256
     _dim: Optional[int] = None
     _max_input_tokens: int = 8191
+    tokenizer_id: str = ""
+    _tokenizer: Optional[Any] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         import openai
@@ -248,12 +344,35 @@ class _OpenAIEmbedder:
     def max_input_tokens(self) -> int:
         return self._max_input_tokens
 
+    @property
+    def tokenizer(self):
+        if self._tokenizer is None and self.tokenizer_id:
+            from transformers import AutoTokenizer
+            self._tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_id)
+        return self._tokenizer
+
+    def _truncate(self, texts: Sequence[str]) -> list:
+        tok = self.tokenizer
+        if tok is None:
+            return list(texts)
+
+        budget = max(1, self._max_input_tokens - 8)
+        out = []
+        for t in texts:
+            ids = tok.encode(t, add_special_tokens=False)
+            if len(ids) <= budget:
+                out.append(t)
+            else:
+                out.append(tok.decode(ids[:budget], skip_special_tokens=True))
+        return out
+
     def encode(self, texts: Sequence[str]) -> np.ndarray:
         if not texts:
             return np.zeros((0, self.embedding_dim), dtype=np.float32)
+        safe_texts = self._truncate(texts)
         vectors = []
-        for i in range(0, len(texts), self.batch_size):
-            chunk = list(texts[i : i + self.batch_size])
+        for i in range(0, len(safe_texts), self.batch_size):
+            chunk = list(safe_texts[i : i + self.batch_size])
             resp = self._client.embeddings.create(model=self.model, input=chunk)
             vectors.extend(item.embedding for item in resp.data)
         if self._dim is None:
@@ -284,11 +403,15 @@ def build_backends(cfg: NLSeekerConfig) -> tuple:
                 model=cfg.openai_llm_model,
                 api_key=cfg.openai_api_key,
                 base_url=cfg.openai_base_url,
+                _max_input_tokens=cfg.openai_llm_max_input_tokens,
+                tokenizer_id=cfg.openai_llm_tokenizer_id,
             )
             embedder = _OpenAIEmbedder(
                 model=cfg.openai_embed_model,
                 api_key=cfg.openai_api_key,
-                base_url=cfg.openai_base_url,
+                base_url=cfg.openai_embed_base_url or cfg.openai_base_url,
+                _max_input_tokens=cfg.openai_embed_max_input_tokens,
+                tokenizer_id=cfg.openai_embed_tokenizer_id,
             )
         _BACKEND_CACHE[key] = (llm, embedder)
         return llm, embedder
