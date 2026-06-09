@@ -12,7 +12,6 @@ COPY pyproject.toml uv.lock ./
 
 COPY src ./src
 COPY scripts ./scripts
-COPY tests ./tests
 COPY Makefile ./
 
 RUN uv sync --frozen
