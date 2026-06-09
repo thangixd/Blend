@@ -243,7 +243,7 @@ def _run_parallel_ingest(
                 if nl_builder is not None and result.raw_table is not None:
                     nl_builder.add_table(
                         table_id,
-                        result.raw_table.to_pandas(),
+                        result.raw_table,
                         contexts=contexts_by_tid.get(table_id),
                     )
         else:
@@ -277,7 +277,7 @@ def _run_parallel_ingest(
                         if nl_builder is not None and result.raw_table is not None:
                             nl_builder.add_table(
                                 table_id,
-                                result.raw_table.to_pandas(),
+                                result.raw_table,
                                 contexts=contexts_by_tid.get(table_id),
                             )
                 except BaseException:

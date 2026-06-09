@@ -19,10 +19,8 @@ from src.utils import df_to_index
 @dataclass
 class WorkerResult:
     table_id: int
-    # None when the source df was empty 
     value_shard: Optional[pa.Table]
-    # None when --no-nl-index was set
-    raw_table: Optional[pa.Table]
+    raw_table: Optional[pd.DataFrame]
 
 
 def _read_table(file_path: Path) -> pd.DataFrame:
@@ -49,7 +47,7 @@ def build_value_shard(
     if df.empty:
         return WorkerResult(table_id=table_id, value_shard=None, raw_table=None)
 
-    raw_arrow = pa.Table.from_pandas(df, preserve_index=False) if want_raw else None
+    raw_df = df if want_raw else None
     idx_df = _df_for_value_index(table_id, df)
     idx_arrow = pa.Table.from_pandas(idx_df, preserve_index=False)
-    return WorkerResult(table_id=table_id, value_shard=idx_arrow, raw_table=raw_arrow)
+    return WorkerResult(table_id=table_id, value_shard=idx_arrow, raw_table=raw_df)
