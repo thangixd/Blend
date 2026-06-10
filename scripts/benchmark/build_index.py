@@ -14,6 +14,15 @@ LOG = logging.getLogger(__name__)
 LAKE_GLOB_PATTERN = "[!_]*.csv"
 
 
+def _dir_nonempty(p: Path) -> bool:
+    """True iff ``p`` is a directory with at least one entry. Used to
+    distinguish a populated index dir from an empty shell left by a
+    crashed build."""
+    if not p.is_dir():
+        return False
+    return any(p.iterdir())
+
+
 @dataclass(frozen=True)
 class BuildResult:
     duckdb_path: Path
@@ -94,8 +103,8 @@ def build_index(
     nl_fulltext_path = nl_out_path / "indexes" / "fulltext" / index_name
     index_complete = (
         duckdb_path.exists()
-        and nl_vector_path.is_dir()
-        and nl_fulltext_path.is_dir()
+        and _dir_nonempty(nl_vector_path)
+        and _dir_nonempty(nl_fulltext_path)
     )
 
     if index_complete and not force:
