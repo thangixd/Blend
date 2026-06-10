@@ -90,7 +90,15 @@ def build_index(
     config_path = index_dir / "config.ini"
     index_name = f"benchmark_{dataset_name}"
 
-    if duckdb_path.exists() and nl_out_path.exists() and not force:
+    nl_vector_path = nl_out_path / "indexes" / "vector" / index_name
+    nl_fulltext_path = nl_out_path / "indexes" / "fulltext" / index_name
+    index_complete = (
+        duckdb_path.exists()
+        and nl_vector_path.is_dir()
+        and nl_fulltext_path.is_dir()
+    )
+
+    if index_complete and not force:
         LOG.info("build skipped: index exists at %s", index_dir)
         # Still rewrite config.ini in case URLs changed.
         write_benchmark_config(
