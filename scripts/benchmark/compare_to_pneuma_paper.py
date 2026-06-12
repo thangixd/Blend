@@ -1,3 +1,5 @@
+"""Compare Blend benchmark hit-rates against the PNEUMA paper figures."""
+
 from __future__ import annotations
 
 import argparse
