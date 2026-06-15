@@ -54,6 +54,15 @@ BENCH_PY = $(PYTHON) -m scripts.benchmark.cli
 
 BENCHMARK_DATASETS ?= adventure_works chembl public_bi chicago_open fetaqa
 
+# Axis sweeps for `make benchmark[-all]`. Defaults match the PNEUMA paper
+# (RQ1 / Figs 6-8 only report k in {1, 5}; the four families and rerank
+# {off, on} are the full ablation grid Blend supports). Override per-call:
+#   make benchmark-all BENCHMARK_K_VALUES=1,5,10,30,50
+#   make benchmark DATASET=chembl BENCHMARK_RERANK_MODES=on
+BENCHMARK_K_VALUES    ?= 1,5
+BENCHMARK_RERANK_MODES ?= off,on
+BENCHMARK_FAMILIES    ?= BC1,BC2,BX1,BX2
+
 benchmark-prepare:  ## Extract tar+zip into benchmark-data/lakes/$(DATASET)/.
 	$(BENCH_PY) prepare --dataset $(DATASET)
 
@@ -62,7 +71,11 @@ benchmark-index: benchmark-prepare  ## Build NLSeeker-only index over the prepar
 	$(BENCH_PY) build --dataset $(DATASET)
 
 benchmark: benchmark-index  ## Run the benchmark and write benchmark-data/results/$(DATASET)/<ts>/.
-	PYTHONHASHSEED=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 $(BENCH_PY) run --dataset $(DATASET)
+	PYTHONHASHSEED=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 $(BENCH_PY) run \
+	  --dataset $(DATASET) \
+	  --k-values $(BENCHMARK_K_VALUES) \
+	  --rerank-modes $(BENCHMARK_RERANK_MODES) \
+	  --families $(BENCHMARK_FAMILIES)
 
 # `benchmark-all` runs every dataset in BENCHMARK_DATASETS sequentially.
 # Each dataset is a fresh `make benchmark` invocation, so a failure on
