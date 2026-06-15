@@ -7,6 +7,7 @@ logs/
 .idea/
 freqs_dict.pkl
 freqs_dict.csv
+tests
 
 # NLSeeker artifacts
 nl-out/
@@ -180,7 +181,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Benchmark harness — generated artifacts
+# Benchmark harness - generated artifacts
 EvaluationDataFromPneuma/
 test_duckdb
 test_nl-out/

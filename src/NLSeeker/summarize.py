@@ -20,7 +20,7 @@ BLOCK_SEPARATOR = " || "
 # and row samples).
 CONTEXT_BLOCK_SEPARATOR = " | "
 
-_BLOCK_HEADROOM = 8
+_BLOCK_HEADROOM = 0  
 
 
 @dataclass
@@ -36,7 +36,7 @@ class SummarizedTable:
 
 
 def _column_list_block(columns: Sequence[str]) -> str:
-    return "\n".join(f"- {col}" for col in columns)
+    return " | ".join(columns)
 
 
 def _build_narration_prompt(columns: Sequence[str], target: str) -> str:
@@ -64,12 +64,11 @@ def generate_column_narrations(
 
 
 def _format_row(row: pd.Series) -> str:
-    parts = []
-    for col, val in row.items():
-        if pd.isna(val):
-            parts.append(f"{col}: ")
-        else:
-            parts.append(f"{col}: {val}")
+    """Render one row as 'col1: val1 | col2: val2 | ...'.
+
+    NaN is stringified as 'nan'.
+    """
+    parts = [f"{col}: {val}" for col, val in row.items()]
     return " | ".join(parts)
 
 
@@ -146,22 +145,36 @@ def summarize_table(
     llm: LLMBackend,
     embedder: EmbedBackend,
     contexts: Optional[Sequence[str]] = None,
+    pre_chunked_contexts: bool = False,
 ) -> SummarizedTable:
-    """Produce blocked column narrations, row samples, and (optional) context blocks."""
+    """Produce blocked column narrations, row samples, and (optional) context blocks.
+
+    When ``pre_chunked_contexts=True`` each item in ``contexts`` is treated as
+    exactly one chunk - ``block_texts`` is bypassed entirely.  This matches
+    PNEUMA's retrieval behaviour where each record in ``contexts_<ds>_merged.jsonl``
+    is already the unit of retrieval.  The default (``False``) preserves the
+    legacy greedy-pack behaviour.
+    """
     LOG.info("Summarizing TableId=%d (%d cols, %d rows%s)",
              table_id, df.shape[1], df.shape[0],
              f", {len(contexts)} contexts" if contexts else "")
     narrations = generate_column_narrations(df, llm)
     samples = generate_row_samples(df)
     context_blocks = []
-    if contexts:
+    if contexts:                      # also skips the None case (list(None) never runs)
         # Contexts skip the LLM and go straight to the blocker - the only
         # added LLM cost is at rerank time.
-        context_blocks = block_texts(
-            contexts,
-            embedder,
-            separator=CONTEXT_BLOCK_SEPARATOR,
-        )
+        if pre_chunked_contexts:
+            # Each merged-context record is already one retrieval unit; skip
+            # block_texts. list() materialises any generator and decouples
+            # from the caller's mutable sequence.
+            context_blocks = list(contexts)
+        else:
+            context_blocks = block_texts(
+                contexts,
+                embedder,
+                separator=CONTEXT_BLOCK_SEPARATOR,
+            )
     return SummarizedTable(
         table_id=table_id,
         column_narration_blocks=block_texts(narrations, embedder),

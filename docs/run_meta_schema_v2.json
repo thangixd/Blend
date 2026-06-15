@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://blend.local/schemas/run_meta_v2.json",
+  "title": "Blend benchmark run_meta.json (schema_version=2)",
+  "type": "object",
+  "required": [
+    "schema_version", "ts_utc", "dataset", "git_commit",
+    "endpoints", "k_values", "n", "alpha",
+    "rerank_modes", "deployment", "parity_deltas",
+    "n_questions", "build_wall_clock_s", "run_wall_clock_s",
+    "status"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "ts_utc": { "type": "string" },
+    "dataset": { "type": "string" },
+    "git_commit": { "type": "string" },
+    "git_dirty": { "type": "boolean" },
+    "config_ini_sha256": { "type": "string" },
+    "endpoints": { "type": "object" },
+    "gpu": { "type": "object" },
+    "k_values": { "type": "array", "items": { "type": "integer" } },
+    "n": { "type": "integer" },
+    "alpha": { "type": "number" },
+    "rerank_modes": {
+      "type": "array",
+      "items": { "enum": ["off", "on"] }
+    },
+    "slicing_method": { "type": "string" },
+    "retrieval_path": { "type": "string" },
+    "n_questions": { "type": "object" },
+    "build_wall_clock_s": { "type": "number" },
+    "run_wall_clock_s": { "type": "number" },
+    "peak_rss_bytes": { "type": "integer" },
+    "unresolvable_questions_count": { "type": "integer" },
+    "dropped_context_rows": { "type": "integer" },
+    "vllm_seed_note": { "type": "string" },
+    "status": { "type": "string" },
+    "deployment": {
+      "type": "object",
+      "required": [
+        "mode", "gpu_count", "inference_engine",
+        "judge_thread_concurrency", "family_parallelism",
+        "build_workers", "value_index_built", "vector_index", "seeds"
+      ],
+      "properties": {
+        "mode": { "const": "benchmark_sequential" },
+        "gpu_count": { "type": "integer" },
+        "gpu_model": { "type": "string" },
+        "gpus_in_use_concurrently": { "type": "integer" },
+        "inference_engine": { "type": "string" },
+        "vllm_version": { "type": ["string", "null"] },
+        "judge_thread_concurrency": { "type": "integer" },
+        "family_parallelism": { "type": "integer" },
+        "family_to_endpoint": { "type": "object" },
+        "embed_endpoint": { "type": "string" },
+        "build_workers": { "type": "integer" },
+        "value_index_built": { "type": "boolean" },
+        "vector_index": { "type": "string" },
+        "embedding_matrix_dtype": { "type": "string" },
+        "embedding_matrix_shape": {
+          "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2
+        },
+        "embedding_matrix_bytes": { "type": "integer" },
+        "context_source": { "type": "string" },
+        "context_blocking": { "type": "string" },
+        "judge_model_id": { "type": ["string", "null"] },
+        "embedder_model_id": { "type": ["string", "null"] },
+        "seeds": {
+          "type": "object",
+          "required": ["PYTHONHASHSEED", "set_seed", "torch_manual_seed",
+                       "numpy_random_seed", "vllm_seed",
+                       "hnsw_random_seed", "row_sample_random_state"],
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "parity_deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": {
+            "enum": ["closed", "closed-by-routing", "documented",
+                     "documented-with-latency-measured", "documented-marginal",
+                     "documented-irreducible"]
+          }
+        }
+      }
+    }
+  }
+}

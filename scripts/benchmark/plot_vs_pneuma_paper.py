@@ -54,7 +54,7 @@ def plot(cmps: list[Comparison], out_path: Path, show: bool = False) -> None:
     datasets = [c.dataset for c in cmps]
     n_ds = len(datasets)
     if n_ds == 0:
-        raise SystemExit("no datasets to plot — did the run directories survive the rsync?")
+        raise SystemExit("no datasets to plot - did the run directories survive the rsync?")
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 8.5), sharey=True)
     axes = axes.ravel()
@@ -91,7 +91,7 @@ def plot(cmps: list[Comparison], out_path: Path, show: bool = False) -> None:
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=2,
                bbox_to_anchor=(0.5, 0.98), frameon=False, fontsize=11)
-    fig.suptitle("Blend (NLSeeker) vs. PNEUMA paper — hit-rate by dataset",
+    fig.suptitle("Blend (NLSeeker) vs. PNEUMA paper - hit-rate by dataset",
                  y=1.0, fontsize=13, fontweight="bold")
     fig.tight_layout(rect=(0, 0, 1, 0.94))
 

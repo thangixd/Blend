@@ -19,6 +19,14 @@ def build_parser() -> argparse.ArgumentParser:
     def _add_dataset(p: argparse.ArgumentParser) -> None:
         p.add_argument("--dataset", required=True)
 
+    def _add_axis_flags(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--rerank-modes", default="off,on",
+                       help="Comma-separated rerank modes (default: off,on)")
+        p.add_argument("--k-values", default="1,5,10,30,50",
+                       help="Comma-separated k values (default: 1,5,10,30,50)")
+        p.add_argument("--families", default="BC1,BC2,BX1,BX2",
+                       help="Comma-separated families (default: BC1,BC2,BX1,BX2)")
+
     p_prep = sub.add_parser("prepare")
     _add_dataset(p_prep)
 
@@ -29,11 +37,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_run = sub.add_parser("run")
     _add_dataset(p_run)
     p_run.add_argument("--max-questions", type=int, default=None)
+    _add_axis_flags(p_run)
 
     p_all = sub.add_parser("all")
     _add_dataset(p_all)
     p_all.add_argument("--force", action="store_true")
     p_all.add_argument("--max-questions", type=int, default=None)
+    _add_axis_flags(p_all)
 
     return parser
 
@@ -61,7 +71,10 @@ def _do_build(spec, force: bool) -> "BuildResult":
     )
 
 
-def _do_run(spec, max_questions: int | None) -> Path:
+def _do_run(spec, max_questions: int | None,
+            rerank_modes: tuple[str, ...] = ("off", "on"),
+            k_values: tuple[int, ...] = (1, 5, 10, 30, 50),
+            families: tuple[str, ...] = ("BC1", "BC2", "BX1", "BX2")) -> Path:
     from scripts.benchmark.endpoints import probe_endpoints
     from scripts.benchmark.run import run_benchmark, FAMILY_LLM_URLS, EMBED_URL
     from scripts.benchmark.build_index import build_index
@@ -95,10 +108,35 @@ def _do_run(spec, max_questions: int | None) -> Path:
         unresolvable=manifest.get("health", {}).get("unresolvable_questions", 0),
         dropped_context_rows=manifest.get("health", {}).get("dropped_context_rows", 0),
         max_questions=max_questions,
+        rerank_modes=rerank_modes,
+        k_values=k_values,
+        families=families,
     )
 
 
-def dispatch(ns: argparse.Namespace) -> int:
+def _parse_axis_flags(ns: argparse.Namespace, parser: argparse.ArgumentParser
+                      ) -> tuple[tuple[str, ...], tuple[int, ...], tuple[str, ...]]:
+    """Strip whitespace, drop empty fragments, error on empty result.
+
+    Tolerates ``--k-values ""`` and stray commas like ``--k-values 1,,5``.
+    """
+    rerank_modes = tuple(s.strip() for s in ns.rerank_modes.split(",") if s.strip())
+    if not rerank_modes:
+        parser.error("--rerank-modes must contain at least one mode")
+    try:
+        k_values = tuple(int(k.strip()) for k in ns.k_values.split(",") if k.strip())
+    except ValueError as exc:
+        parser.error(f"--k-values must be comma-separated integers: {exc}")
+    if not k_values:
+        parser.error("--k-values must contain at least one integer")
+    families = tuple(s.strip() for s in ns.families.split(",") if s.strip())
+    if not families:
+        parser.error("--families must contain at least one family")
+    return rerank_modes, k_values, families
+
+
+def dispatch(ns: argparse.Namespace, parser: argparse.ArgumentParser | None = None
+             ) -> int:
     spec = _resolve_spec(ns.dataset)
     if ns.command == "prepare":
         result = _do_prepare(spec)
@@ -111,14 +149,29 @@ def dispatch(ns: argparse.Namespace) -> int:
         result = _do_build(spec, ns.force)
         print(f"build ok: {result.duckdb_path} (wall={result.wall_clock_s:.1f}s)")
         return 0
+    # `parser` is required from here on for argparse-style error reporting.
+    if parser is None:
+        parser = build_parser()
     if ns.command == "run":
-        run_dir = _do_run(spec, ns.max_questions)
+        rerank_modes, k_values, families = _parse_axis_flags(ns, parser)
+        run_dir = _do_run(
+            spec, ns.max_questions,
+            rerank_modes=rerank_modes,
+            k_values=k_values,
+            families=families,
+        )
         print(f"run ok: {run_dir}")
         return 0
     if ns.command == "all":
+        rerank_modes, k_values, families = _parse_axis_flags(ns, parser)
         _do_prepare(spec)
         _do_build(spec, ns.force)
-        run_dir = _do_run(spec, ns.max_questions)
+        run_dir = _do_run(
+            spec, ns.max_questions,
+            rerank_modes=rerank_modes,
+            k_values=k_values,
+            families=families,
+        )
         print(f"all ok: {run_dir}")
         return 0
     raise AssertionError(f"unreachable: {ns.command}")
@@ -132,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     ns = parser.parse_args(argv)
     try:
-        return dispatch(ns)
+        return dispatch(ns, parser)
     except SystemExit:
         raise
     except Exception as e:

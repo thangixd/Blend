@@ -57,11 +57,12 @@ BENCHMARK_DATASETS ?= adventure_works chembl public_bi chicago_open fetaqa
 benchmark-prepare:  ## Extract tar+zip into benchmark-data/lakes/$(DATASET)/.
 	$(BENCH_PY) prepare --dataset $(DATASET)
 
-benchmark-index: benchmark-prepare  ## Build NLSeeker index over the prepared lake.
+
+benchmark-index: benchmark-prepare  ## Build NLSeeker-only index over the prepared lake (value_index=False).
 	$(BENCH_PY) build --dataset $(DATASET)
 
 benchmark: benchmark-index  ## Run the benchmark and write benchmark-data/results/$(DATASET)/<ts>/.
-	PYTHONHASHSEED=0 $(BENCH_PY) run --dataset $(DATASET)
+	PYTHONHASHSEED=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 $(BENCH_PY) run --dataset $(DATASET)
 
 # `benchmark-all` runs every dataset in BENCHMARK_DATASETS sequentially.
 # Each dataset is a fresh `make benchmark` invocation, so a failure on

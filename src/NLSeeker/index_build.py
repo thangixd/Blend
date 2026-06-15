@@ -149,12 +149,14 @@ class NLIndexBuilder:
         table_id: int,
         df: pd.DataFrame,
         contexts: Optional[Sequence[str]] = None,
+        pre_chunked_contexts: bool = False,
     ) -> None:
         """Summarise one table and stage its documents for both indexes."""
         if self._collection is None:
             raise RuntimeError("NLIndexBuilder.start() must be called first")
 
-        summary = summarize_table(table_id, df, self.llm, self.embedder, contexts=contexts)
+        summary = summarize_table(table_id, df, self.llm, self.embedder, contexts=contexts,
+                                  pre_chunked_contexts=pre_chunked_contexts)
         flat = _flatten_summary(summary)
         if not flat.triples:
             LOG.warning("TableId=%d produced no summary documents - skipping", table_id)

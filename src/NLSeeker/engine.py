@@ -6,7 +6,7 @@ from src.NLSeeker.config import NLSeekerConfig
 from src.NLSeeker.db_schema import _read_db_section
 from src.NLSeeker.llm import EmbedBackend, LLMBackend, build_backends, reset_backend_cache
 from src.NLSeeker.predicate import EMPTY_FILTER, TableFilter
-from src.NLSeeker.retrieve import RetrievalResult, _BM25Index, _VectorIndex, open_indexes, search
+from src.NLSeeker.retrieve import RetrievalResult, _BM25Index, _VectorIndex, open_indexes, search, search_with_metrics
 
 # Typing imports
 from pathlib import Path
@@ -56,6 +56,9 @@ class _NLEngine:
         n: int = None,
         alpha: float = None,
         table_filter: TableFilter = EMPTY_FILTER,
+        *,
+        rerank: bool = True,
+        judge_concurrency: int | None = None,
     ) -> List[RetrievalResult]:
         eff_k = self.cfg.default_k if k is None else int(k)
         eff_n = self.cfg.n if n is None else int(n)
@@ -69,6 +72,40 @@ class _NLEngine:
             n=eff_n,
             alpha=eff_alpha,
             table_filter=table_filter,
+            rerank=rerank,
+            judge_concurrency=judge_concurrency,
+        )
+
+    def search_with_metrics(
+        self,
+        query: str,
+        k: int = None,
+        n: int = None,
+        alpha: float = None,
+        table_filter: TableFilter = EMPTY_FILTER,
+        *,
+        rerank: bool = True,
+        judge_concurrency: int | None = None,
+    ) -> tuple:
+        """Like ``search``, but returns ``(results, {"vector_ms": float})``.
+
+        Delegates to ``retrieve.search_with_metrics`` which resets and reads
+        ``_VectorIndex._last_vector_ms`` around the search call.
+        """
+        eff_k = self.cfg.default_k if k is None else int(k)
+        eff_n = self.cfg.n if n is None else int(n)
+        eff_alpha = self.cfg.alpha if alpha is None else float(alpha)
+        return search_with_metrics(
+            query=query,
+            bm25=self._bm25,
+            vector=self._vector,
+            llm=self.llm,
+            k=eff_k,
+            n=eff_n,
+            alpha=eff_alpha,
+            table_filter=table_filter,
+            rerank=rerank,
+            judge_concurrency=judge_concurrency,
         )
 
 

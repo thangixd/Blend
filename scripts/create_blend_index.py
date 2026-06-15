@@ -168,7 +168,7 @@ def _sink_one(cursor, con, dbms: str, table_name: str, result) -> None:
     """Insert one ``WorkerResult`` into ``table_name``.
 
     For DuckDB we register the Arrow table as a temporary view and ingest it
-    via ``INSERT INTO ... SELECT FROM <view>`` — zero-copy, vectorised, and
+    via ``INSERT INTO ... SELECT FROM <view>`` - zero-copy, vectorised, and
     far faster than ``executemany``. The explicit column list is the
     byte-identity firewall: the worker's Arrow column names come from
     df_to_index's ``CellValue, TableId, ColumnId, RowId, SuperKey, Quadrant``
@@ -176,7 +176,7 @@ def _sink_one(cursor, con, dbms: str, table_name: str, result) -> None:
     ``(tokenized, tableid, colid, rowid, super_key, quadrant)``.
 
     For Postgres / Vertica we convert the Arrow table back to a DataFrame
-    and delegate to the existing ``_insert_index_rows`` executemany sink —
+    and delegate to the existing ``_insert_index_rows`` executemany sink -
     those backends benefit from the parallel CPU compute but keep their
     current bulk-load path.
     """
@@ -213,6 +213,8 @@ def _run_parallel_ingest(
     workers: int,
     nl_builder,
     contexts_by_tid: dict[int, list[str]],
+    value_index: bool = True,
+    pre_chunked_contexts: bool = False,
 ) -> None:
     """Run per-table value-index compute in a process pool, sink each shard
     in submission order, and drive the NL builder in lockstep.
@@ -223,10 +225,14 @@ def _run_parallel_ingest(
     The transaction boundary lives here: we BEGIN before the first shard
     and COMMIT after the last; on any exception we ROLLBACK and DROP the
     partially-built ``table_name`` so the on-disk database is left clean.
+
+    When ``value_index=False`` the cursor/con are None; the value-index
+    transaction, _sink_one calls, and want_value compute are all skipped.
+    NL builder calls are unconditional.
     """
     want_raw = nl_builder is not None
 
-    if dbms == "duckdb":
+    if value_index and dbms == "duckdb":
         cursor.execute("BEGIN TRANSACTION")
 
     try:
@@ -237,14 +243,16 @@ def _run_parallel_ingest(
             )
             for table_id, file_path in tqdm(files, desc="Tables"):
                 result = _blend_ingest_worker.build_value_shard(
-                    table_id, str(file_path), want_raw
+                    table_id, str(file_path), want_raw, want_value=value_index,
                 )
-                _sink_one(cursor, con, dbms, table_name, result)
+                if value_index:
+                    _sink_one(cursor, con, dbms, table_name, result)
                 if nl_builder is not None and result.raw_table is not None:
                     nl_builder.add_table(
                         table_id,
                         result.raw_table,
                         contexts=contexts_by_tid.get(table_id),
+                        pre_chunked_contexts=pre_chunked_contexts,
                     )
         else:
             LOG.info(
@@ -266,6 +274,7 @@ def _run_parallel_ingest(
                         fut = pool.submit(
                             _blend_ingest_worker.build_value_shard,
                             table_id, str(file_path), want_raw,
+                            want_value=value_index,
                         )
                         fut.add_done_callback(lambda _f: inflight.release())
                         futures.append(fut)
@@ -273,12 +282,14 @@ def _run_parallel_ingest(
                     for tid_path, fut in zip(files, tqdm(futures, desc="Tables")):
                         table_id = tid_path[0]
                         result = fut.result()  # raises in submission order
-                        _sink_one(cursor, con, dbms, table_name, result)
+                        if value_index:
+                            _sink_one(cursor, con, dbms, table_name, result)
                         if nl_builder is not None and result.raw_table is not None:
                             nl_builder.add_table(
                                 table_id,
                                 result.raw_table,
                                 contexts=contexts_by_tid.get(table_id),
+                                pre_chunked_contexts=pre_chunked_contexts,
                             )
                 except BaseException:
                     # Drop queued-but-not-started work promptly; let the with
@@ -286,25 +297,27 @@ def _run_parallel_ingest(
                     pool.shutdown(wait=False, cancel_futures=True)
                     raise
 
-        if dbms == "duckdb":
-            cursor.execute("COMMIT")
-        else:
-            con.commit()
+        if value_index:
+            if dbms == "duckdb":
+                cursor.execute("COMMIT")
+            else:
+                con.commit()
     except BaseException:
-        if dbms == "duckdb":
-            try:
-                cursor.execute("ROLLBACK")
-            except Exception:
-                pass
-            try:
-                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
-            except Exception:
-                pass
-        else:
-            try:
-                con.rollback()
-            except Exception:
-                pass
+        if value_index:
+            if dbms == "duckdb":
+                try:
+                    cursor.execute("ROLLBACK")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+                except Exception:
+                    pass
+            else:
+                try:
+                    con.rollback()
+                except Exception:
+                    pass
         raise
 
 
@@ -363,12 +376,25 @@ def run_pipeline(
     nl_config_overrides: Optional[dict] = None,
     metadata_path: Optional[Path] = None,
     workers: int = 1,
+    value_index: bool = True,
+    pre_chunked_contexts: bool = False,
 ) -> None:
     """End-to-end driver shared by the CLI and any programmatic caller.
 
     When ``metadata_path`` is supplied, each context row is indexed alongside
     the LLM-generated content summaries. Tables without a context row fall
     through to the content-only path.
+
+    When ``value_index=False`` the value-index DuckDB table (``blend_index``)
+    is not created or populated. NLSeeker's NL index is still built when
+    ``nl_index=True``. Benchmark mode uses this to avoid building the
+    100 MB-1 GB value-index that the legacy Union/SC/MC operators require.
+
+    When ``pre_chunked_contexts=True`` each context row in ``_metadata.csv``
+    is treated as exactly one chunk rather than being passed through
+    ``block_texts``.  Benchmark mode enables this so that each merged-context
+    record (one per table in ``contexts_<ds>_merged.jsonl``) becomes a single
+    retrieval unit, mirroring PNEUMA's retriever behaviour.
     """
     db_cfg = _read_db_section(config_path)
     table_name = db_cfg["index_table"]
@@ -399,9 +425,14 @@ def run_pipeline(
         nl_builder = NLIndexBuilder(nl_cfg)
         nl_builder.start()
 
-    con, cursor, dbms = _open_writer(db_cfg)
+    if value_index:
+        con, cursor, dbms = _open_writer(db_cfg)
+    else:
+        con, cursor, dbms = None, None, db_cfg.get("dbms", "duckdb").lower()
+
     try:
-        _create_value_index_table(cursor, dbms, table_name)
+        if value_index:
+            _create_value_index_table(cursor, dbms, table_name)
         _run_parallel_ingest(
             files=files,
             cursor=cursor,
@@ -411,10 +442,13 @@ def run_pipeline(
             workers=workers,
             nl_builder=nl_builder,
             contexts_by_tid=contexts_by_tid,
+            value_index=value_index,
+            pre_chunked_contexts=pre_chunked_contexts,
         )
     finally:
-        cursor.close()
-        con.close()
+        if value_index:
+            cursor.close()
+            con.close()
 
     if nl_builder is not None:
         result = nl_builder.finalize()
@@ -425,7 +459,10 @@ def run_pipeline(
             result.total_tables,
         )
 
-    LOG.info("Value-index '%s' built across %d tables", table_name, len(files))
+    if value_index:
+        LOG.info("Value-index '%s' built across %d tables", table_name, len(files))
+    else:
+        LOG.info("Value-index skipped (value_index=False); NL-only build across %d tables", len(files))
 
 
 
@@ -451,6 +488,16 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         help=(
             "Build NLSeeker's vector + BM25 index alongside the value-index "
             "(default: on). Pass --no-nl-index to skip "
+        ),
+    )
+    parser.add_argument(
+        "--value-index",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Build the value-index (blend_index DuckDB table) used by the "
+            "legacy Union/SC/MC operators (default: on). Pass --no-value-index "
+            "to skip - useful for NL-only benchmark builds."
         ),
     )
     parser.add_argument(
@@ -502,6 +549,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         nl_index=args.nl_index,
         metadata_path=metadata_path if args.nl_index else None,
         workers=args.workers,
+        value_index=args.value_index,
     )
 
 

@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 
 import bm25s
@@ -48,11 +49,13 @@ _CONTEXT_RERANK_PROMPT = (
 
 
 def _rerank_prompt_for(doc_id: str, desc: str, query: str) -> str:
-    try:
-        _, kind, _ = parse_doc_id(doc_id)
-    except ValueError:
-        kind = "schema"
-    template = _CONTEXT_RERANK_PROMPT if kind == "contexts" else _CONTENT_RERANK_PROMPT
+    """Pick the rerank template canonically by doc-kind."""
+    if "_SEP_contents_SEP_" in doc_id:
+        template = _CONTENT_RERANK_PROMPT
+    elif "_SEP_contexts-" in doc_id:
+        template = _CONTEXT_RERANK_PROMPT
+    else:
+        raise ValueError(f"Unrecognised doc_id kind: {doc_id!r}")
     return template.format(desc=desc, query=query)
 
 
@@ -218,6 +221,7 @@ class _VectorIndex:
         self._all_documents: list = []
         self._all_embeddings: np.ndarray = np.empty((0, 0), dtype=np.float32)
         self._doc_id_to_row: dict = {}
+        self._last_vector_ms: float = 0.0
 
         if self._collection_size == 0:
             return
@@ -250,6 +254,10 @@ class _VectorIndex:
             return q
         return q / n
 
+    def reset_last_vector_ms(self) -> None:
+        """Reset the accumulated vector timing counter to zero."""
+        self._last_vector_ms = 0.0
+
     def retrieve(
         self,
         query: str,
@@ -263,7 +271,9 @@ class _VectorIndex:
             return {}, None
 
         if allowed_doc_ids is None:
+            _t0 = time.perf_counter()
             scores = self._all_embeddings @ q
+            self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
             order = _topk_indices(scores, k)
             out = {}
             for i in order:
@@ -285,7 +295,9 @@ class _VectorIndex:
         if not rows:
             return {}, q
         sub = self._all_embeddings[rows]
+        _t0 = time.perf_counter()
         scores = sub @ q
+        self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
         order = _topk_indices(scores, k)
         out = {}
         for j in order:
@@ -298,18 +310,28 @@ class _VectorIndex:
         """Score ``doc_ids`` not present in the top-k list."""
         if not doc_ids:
             return {}
+        # Resolve rows BEFORE the timer - dict lookups are not matvec work.
+        pairs = [(d, self._doc_id_to_row.get(d)) for d in doc_ids]
+        valid = [(d, r) for d, r in pairs if r is not None]
+        if not valid:
+            return {}
+        rows = [r for _, r in valid]
         q = np.asarray(query_vec, dtype=np.float32)
         n = float(np.linalg.norm(q))
         q_norm = q if n <= 0 else q / n
-        out = {}
-        for did in doc_ids:
-            r = self._doc_id_to_row.get(did)
-            if r is None:
-                continue
-            sim = float(self._all_embeddings[r] @ q_norm)
-            sim = max(0.0, sim)
-            out[did] = (sim, self._all_documents[r])
-        return out
+
+        # Time only the actual matvec.
+        _t0 = time.perf_counter()
+        sims = self._all_embeddings[rows] @ q_norm
+        self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
+
+        # Output dict construction lives outside the timer; clamp to >= 0
+        # to preserve prior return contract.
+        sims = np.maximum(sims, 0.0)
+        return {
+            d: (float(sims[i]), self._all_documents[rows[i]])
+            for i, (d, _r) in enumerate(valid)
+        }
 
 
 def hybrid_retrieve(
@@ -387,12 +409,14 @@ def llm_rerank(
     query: str,
     candidates: Sequence[HybridResult],
     llm: LLMBackend,
+    *,
+    concurrency: int | None = None,
 ) -> List[tuple]:
     """Yes/no judge per candidate; relevant ones bubble to the front."""
     if not candidates:
         return []
     prompts = [_rerank_prompt_for(c.doc_id, c.text, query) for c in candidates]
-    answers = llm.generate(prompts, max_new_tokens=2)
+    answers = llm.generate(prompts, max_new_tokens=2, concurrency=concurrency)
     judged = [(cand, _is_yes(ans)) for cand, ans in zip(candidates, answers)]
     relevant = [pair for pair in judged if pair[1]]
     others = [pair for pair in judged if not pair[1]]
@@ -408,6 +432,9 @@ def search(
     n: int,
     alpha: float,
     table_filter: TableFilter = EMPTY_FILTER,
+    *,
+    rerank: bool = True,
+    judge_concurrency: int | None = None, 
 ) -> List[RetrievalResult]:
     """Hybrid retrieve → LLM rerank → truncate to ``k`` → dedupe by table.
 
@@ -420,9 +447,13 @@ def search(
     if not fused:
         return []
 
-    reranked = llm_rerank(query, fused, llm)
+    if rerank:
+        candidates = llm_rerank(query, fused, llm, concurrency=judge_concurrency)
+    else:
+        # Wrap each candidate as (cand, True) to keep downstream tuple shape stable.
+        candidates = [(c, True) for c in fused]
 
-    top_k_positions = reranked[:k]
+    top_k_positions = candidates[:k]
 
     seen = {}
     for hit, relevant in top_k_positions:
@@ -451,11 +482,54 @@ def open_indexes(
     return _BM25Index(fulltext_path), _VectorIndex(vector_path, collection_name, embedder)
 
 
+def search_with_metrics(
+    query: str,
+    bm25: _BM25Index,
+    vector: _VectorIndex,
+    llm: LLMBackend,
+    k: int,
+    n: int,
+    alpha: float,
+    table_filter: TableFilter = EMPTY_FILTER,
+    *,
+    rerank: bool = True,
+    judge_concurrency: int | None = None,
+) -> tuple:
+    """Like ``search``, but also returns a metrics dict with ``vector_ms``.
+
+    Returns
+    -------
+    (results, {"vector_ms": float})
+        *results* is the same ``List[RetrievalResult]`` that ``search`` returns.
+        *vector_ms* is the wall-clock time (ms) spent inside numpy matvec
+        operations on the ``_VectorIndex`` during this query.
+
+    Production callers should continue to use the plain ``search()`` function.
+    This peer function exists for the benchmark runner, which needs per-query
+    timing breakdowns without modifying the public ``search`` signature.
+    """
+    vector.reset_last_vector_ms()
+    results = search(
+        query=query,
+        bm25=bm25,
+        vector=vector,
+        llm=llm,
+        k=k,
+        n=n,
+        alpha=alpha,
+        table_filter=table_filter,
+        rerank=rerank,
+        judge_concurrency=judge_concurrency,
+    )
+    return results, {"vector_ms": vector._last_vector_ms}
+
+
 __all__ = [
     "HybridResult",
     "RetrievalResult",
     "hybrid_retrieve",
     "llm_rerank",
     "search",
+    "search_with_metrics",
     "open_indexes",
 ]

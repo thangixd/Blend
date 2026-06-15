@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import configparser
 import logging
-import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -101,9 +100,10 @@ def build_index(
 
     nl_vector_path = nl_out_path / "indexes" / "vector" / index_name
     nl_fulltext_path = nl_out_path / "indexes" / "fulltext" / index_name
+    # value_index is disabled in benchmark mode; don't gate on the
+    # blend_index DuckDB table; only the NL sub-dirs need to be present.
     index_complete = (
-        duckdb_path.exists()
-        and _dir_nonempty(nl_vector_path)
+        _dir_nonempty(nl_vector_path)
         and _dir_nonempty(nl_fulltext_path)
     )
 
@@ -145,7 +145,7 @@ def build_index(
     metadata_path = lake_dir / "_metadata.csv"
     if not metadata_path.exists():
         raise FileNotFoundError(
-            f"build_index: {metadata_path} missing — run prepare first."
+            f"build_index: {metadata_path} missing - run prepare first."
         )
 
     from scripts.create_blend_index import run_pipeline  # delayed to avoid heavy imports at module load
@@ -159,7 +159,9 @@ def build_index(
         config_path=config_path,
         nl_index=True,
         metadata_path=metadata_path,
-        workers=min((os.cpu_count() or 2) - 1, 16),
+        workers=1,                    
+        value_index=False,            
+        pre_chunked_contexts=True,    
     )
     wall = time.perf_counter() - t0
     return BuildResult(duckdb_path, nl_out_path, index_name, config_path, wall)

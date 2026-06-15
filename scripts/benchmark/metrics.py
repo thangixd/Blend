@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Sequence
 
 
 def hit_at_k(retrieved_pneuma_ids: list[str], answer_ids: set[str], k: int) -> bool:
@@ -39,4 +39,16 @@ def reciprocal_rank(
     return 0.0
 
 
-__all__ = ["hit_at_k", "recall_at_k", "reciprocal_rank"]
+def latency_stats(latencies_ms: Sequence[float]) -> tuple[float, float, float]:
+    if not latencies_ms:
+        return 0.0, 0.0, 0.0
+    n = len(latencies_ms)
+    mean = sum(latencies_ms) / n
+    sorted_ms = sorted(latencies_ms)
+    p50 = sorted_ms[n // 2]
+    p95_idx = max(0, min(n - 1, int(round(0.95 * (n - 1)))))
+    p95 = sorted_ms[p95_idx]
+    return float(mean), float(p50), float(p95)
+
+
+__all__ = ["hit_at_k", "recall_at_k", "reciprocal_rank", "latency_stats"]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,10 +12,10 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class PaperRef:
-    mixed_k1: float | None    # Fig. 6a — BC2+BX2 weighted at k=1
-    mixed_k5: float | None    # Fig. 6b — BC2+BX2 weighted at k=5
-    content_k1: float | None  # Table 2 — BC2 only at k=1
-    context_k1: float | None  # Table 2 — BX2 only at k=1
+    mixed_k1: float | None    # Fig. 6a - BC2+BX2 weighted at k=1
+    mixed_k5: float | None    # Fig. 6b - BC2+BX2 weighted at k=5
+    content_k1: float | None  # Table 2 - BC2 only at k=1
+    context_k1: float | None  # Table 2 - BX2 only at k=1
 
 
 # Numbers read off the paper figures/tables. Fig. 6 bars are reported
@@ -42,14 +43,6 @@ DATASET_ALIASES: dict[str, str] = {
 }
 
 
-@dataclass(frozen=True)
-class FamilyRow:
-    family: str
-    k: int
-    n_questions: int
-    hit_rate: float
-
-
 def _normalise(name: str) -> str:
     return DATASET_ALIASES.get(name, name)
 
@@ -66,100 +59,270 @@ def _latest_run_dir(dataset_dir: Path) -> Path | None:
     return sorted(candidates, key=lambda p: p.name)[-1]
 
 
-def _load_summary(summary_csv: Path) -> list[FamilyRow]:
-    rows: list[FamilyRow] = []
-    with summary_csv.open() as f:
-        for r in csv.DictReader(f):
-            rows.append(FamilyRow(
-                family=r["family"],
-                k=int(r["k"]),
-                n_questions=int(r["n_questions"]),
-                hit_rate=float(r["hit_rate"]),
-            ))
-    return rows
+def _read_summary(path: Path) -> list[dict]:
+    """Parse summary.csv into a list of dicts."""
+    with path.open() as f:
+        return list(csv.DictReader(f))
 
 
-def _weighted(content: FamilyRow | None, context: FamilyRow | None) -> float | None:
-    """BC2+BX2 weighted mean, weighted by n_questions (the paper's own scheme)."""
-    if content is None or context is None:
-        return None
-    total = content.n_questions + context.n_questions
-    if total == 0:
-        return None
-    return (content.hit_rate * content.n_questions
-            + context.hit_rate * context.n_questions) / total
-
-@dataclass(frozen=True)
-class Comparison:
-    dataset: str
-    run_dir: Path
-    n_bc2: int
-    n_bx2: int
-    ours_mixed_k1: float | None
-    ours_mixed_k5: float | None
-    ours_content_k1: float | None
-    ours_context_k1: float | None
-
-
-def compare_one(dataset: str, run_dir: Path) -> Comparison:
-    rows = _load_summary(run_dir / "summary.csv")
-    by_fk = {(r.family, r.k): r for r in rows}
-    bc2_k1 = by_fk.get(("BC2", 1))
-    bx2_k1 = by_fk.get(("BX2", 1))
-    bc2_k5 = by_fk.get(("BC2", 5))
-    bx2_k5 = by_fk.get(("BX2", 5))
-    return Comparison(
-        dataset=dataset,
-        run_dir=run_dir,
-        n_bc2=bc2_k1.n_questions if bc2_k1 else 0,
-        n_bx2=bx2_k1.n_questions if bx2_k1 else 0,
-        ours_mixed_k1=_weighted(bc2_k1, bx2_k1),
-        ours_mixed_k5=_weighted(bc2_k5, bx2_k5),
-        ours_content_k1=bc2_k1.hit_rate if bc2_k1 else None,
-        ours_context_k1=bx2_k1.hit_rate if bx2_k1 else None,
-    )
-
-def _fmt(v: float | None) -> str:
-    return "  ---" if v is None else f"{v:6.2f}"
-
-
-def _fmt_delta(ours: float | None, paper: float | None) -> str:
-    if ours is None or paper is None:
-        return "   ---"
-    d = ours - paper
-    sign = "+" if d >= 0 else "−"
-    return f"{sign}{abs(d):5.2f}"
-
-
-def print_table(cmps: list[Comparison]) -> None:
-    print()
-    print("PNEUMA paper vs. our NLSeeker run — per-dataset, BC2+BX2 weighted by n_questions")
-    print("=" * 110)
-    header = (
-        f"{'dataset':<18} {'k':<2} {'metric':<11} "
-        f"{'ours':>6}  {'paper':>6}  {'Δ (pp)':>7}   {'n_BC2':>5} {'n_BX2':>5}  source"
-    )
-    print(header)
-    print("-" * 110)
-    for c in cmps:
-        ref = PAPER.get(c.dataset)
-        if ref is None:
-            print(f"{c.dataset:<18}   (no paper reference; skipping)")
+def _filter(rows: list[dict], *, rerank_mode: str, k_in: set[int]) -> list[dict]:
+    result = []
+    for r in rows:
+        if "rerank_mode" not in r:
             continue
-        rows = [
-            (1, "mixed",   c.ours_mixed_k1,   ref.mixed_k1,   "Fig. 6a"),
-            (5, "mixed",   c.ours_mixed_k5,   ref.mixed_k5,   "Fig. 6b"),
-            (1, "content", c.ours_content_k1, ref.content_k1, "Table 2"),
-            (1, "context", c.ours_context_k1, ref.context_k1, "Table 2"),
-        ]
-        for k, metric, ours, paper, src in rows:
-            print(
-                f"{c.dataset:<18} {k:<2} {metric:<11} "
-                f"{_fmt(ours)}  {_fmt(paper)}  {_fmt_delta(ours, paper)}   "
-                f"{c.n_bc2:>5} {c.n_bx2:>5}  {src}"
+        if r["rerank_mode"] == rerank_mode and int(r["k"]) in k_in:
+            result.append(r)
+    return result
+
+
+def _weighted_mean_hit_rate(rows: list[dict]) -> float | None:
+    """BC2+BX2 weighted mean, weighted by n_questions (the paper's own scheme).
+
+    Returns None when no rows are supplied or total n_questions is zero, so
+    callers can distinguish 'missing data' from a true 0.0 hit-rate.
+    """
+    if not rows:
+        return None
+    total = sum(float(r["hit_rate"]) * int(r["n_questions"]) for r in rows)
+    n = sum(int(r["n_questions"]) for r in rows)
+    return total / n if n else None
+
+
+def _fmt_or_dash(value: float | None, width: int = 8, decimals: int = 2) -> str:
+    """Format a float to fixed width; emit '---' aligned-width when None."""
+    if value is None:
+        return "---".rjust(width)
+    return f"{value:>{width}.{decimals}f}"
+
+
+def _delta_or_dash(actual: float | None, ref: float, width: int = 6) -> str:
+    """Format a +/- delta vs ref; emit '---' aligned-width when actual is None."""
+    if actual is None:
+        return "---".rjust(width)
+    return f"{actual - ref:+{width}.2f}"
+
+
+def _print_panel_1(rows_by_ds: dict[str, list[dict]]) -> None:
+    print()
+    print("=" * 100)
+    print("Panel 1: Paper-headline (k=1, k=5; rerank=off; matches paper Fig. 6 / Table 2)")
+    print("=" * 100)
+    print(f"{'dataset':18} | {'mixed_k1':>8} | {'paper_k1':>8} | {'Δ pp':>6} | "
+          f"{'mixed_k5':>8} | {'paper_k5':>8} | {'Δ pp':>6} | "
+          f"{'content_k1':>10} | {'paper':>6} | {'Δ pp':>6} | "
+          f"{'context_k1':>10} | {'paper':>6} | {'Δ pp':>6}")
+    print("-" * 100)
+    any_data = False
+    for ds, rows in sorted(rows_by_ds.items()):
+        off = _filter(rows, rerank_mode="off", k_in={1, 5})
+        if not off:
+            continue
+        if ds not in PAPER:
+            print(f"{ds:18} (no paper reference; skipping)")
+            continue
+        ref = PAPER[ds]
+        bc2 = [r for r in off if r["family"] == "BC2"]
+        bx2 = [r for r in off if r["family"] == "BX2"]
+
+        def mixed(k: int) -> float | None:
+            return _weighted_mean_hit_rate(
+                [r for r in bc2 if int(r["k"]) == k]
+                + [r for r in bx2 if int(r["k"]) == k]
             )
-        print(f"{'':<18}   run: {c.run_dir}")
-        print("-" * 110)
+
+        m1, m5 = mixed(1), mixed(5)
+        c1 = next((float(r["hit_rate"]) for r in bc2 if int(r["k"]) == 1), None)
+        x1 = next((float(r["hit_rate"]) for r in bx2 if int(r["k"]) == 1), None)
+        print(
+            f"{ds:18} | {_fmt_or_dash(m1)} | {ref.mixed_k1:8.2f} | {_delta_or_dash(m1, ref.mixed_k1)} | "
+            f"{_fmt_or_dash(m5)} | {ref.mixed_k5:8.2f} | {_delta_or_dash(m5, ref.mixed_k5)} | "
+            f"{_fmt_or_dash(c1, width=10)} | {ref.content_k1:6.2f} | {_delta_or_dash(c1, ref.content_k1)} | "
+            f"{_fmt_or_dash(x1, width=10)} | {ref.context_k1:6.2f} | {_delta_or_dash(x1, ref.context_k1)}"
+        )
+        any_data = True
+    if not any_data:
+        print("(no data - run `make benchmark DATASET=<ds>`)")
+
+
+def _print_panel_2(rows_by_ds: dict[str, list[dict]]) -> None:
+    print()
+    print("=" * 100)
+    print("Panel 2: Blend-with-judge (rerank=on; not in paper; production-class)")
+    print("=" * 100)
+    print(f"{'dataset':18} | {'mixed_k1':>8} | {'mixed_k5':>8} | "
+          f"{'content_k1':>10} | {'context_k1':>10} | {'uplift_k1':>9}")
+    print("-" * 100)
+    any_data = False
+    for ds, rows in sorted(rows_by_ds.items()):
+        on_rows = _filter(rows, rerank_mode="on", k_in={1, 5})
+        if not on_rows:
+            continue
+        off_rows = _filter(rows, rerank_mode="off", k_in={1})
+        bc2_on = [r for r in on_rows if r["family"] == "BC2"]
+        bx2_on = [r for r in on_rows if r["family"] == "BX2"]
+
+        def mixed_on(k: int) -> float | None:
+            return _weighted_mean_hit_rate(
+                [r for r in bc2_on if int(r["k"]) == k]
+                + [r for r in bx2_on if int(r["k"]) == k]
+            )
+
+        m1_on = mixed_on(1)
+        m5_on = mixed_on(5)
+        c1_on = next((float(r["hit_rate"]) for r in bc2_on if int(r["k"]) == 1), None)
+        x1_on = next((float(r["hit_rate"]) for r in bx2_on if int(r["k"]) == 1), None)
+
+        # Compute uplift: on - off at k=1 (mixed). None when either side missing.
+        m1_off = _weighted_mean_hit_rate(
+            [r for r in off_rows if r["family"] == "BC2"]
+            + [r for r in off_rows if r["family"] == "BX2"]
+        )
+        if m1_on is None or m1_off is None:
+            uplift_str = "---".rjust(9)
+        else:
+            uplift_str = f"{m1_on - m1_off:+9.2f}"
+
+        print(
+            f"{ds:18} | {_fmt_or_dash(m1_on)} | {_fmt_or_dash(m5_on)} | "
+            f"{_fmt_or_dash(c1_on, width=10)} | {_fmt_or_dash(x1_on, width=10)} | {uplift_str}"
+        )
+        any_data = True
+    if not any_data:
+        print("(no data - run `make benchmark DATASET=<ds>`)")
+
+
+def _print_panel_3(rows_by_ds: dict[str, list[dict]]) -> None:
+    print()
+    print("=" * 100)
+    print("Panel 3: k-sweep ablation (rerank=off; matches PNEUMA §7.4.2 Fig. 15)")
+    print("=" * 100)
+    print(f"{'dataset':18} | {'k=1':>6} | {'k=5':>6} | {'k=10':>6} | {'k=30':>6} | {'k=50':>6}")
+    print("-" * 100)
+    any_data = False
+    for ds, rows in sorted(rows_by_ds.items()):
+        off = _filter(rows, rerank_mode="off", k_in={1, 5, 10, 30, 50})
+        bc2 = {int(r["k"]): float(r["hit_rate"]) for r in off if r["family"] == "BC2"}
+        if not bc2:
+            continue
+        print(
+            f"{ds:18} | {bc2.get(1, 0.0):6.2f} | {bc2.get(5, 0.0):6.2f} | "
+            f"{bc2.get(10, 0.0):6.2f} | {bc2.get(30, 0.0):6.2f} | {bc2.get(50, 0.0):6.2f}"
+        )
+        any_data = True
+    if not any_data:
+        print("(no data - run `make benchmark DATASET=<ds>`)")
+
+
+def _print_panel_4(rows_by_ds: dict[str, list[dict]]) -> None:
+    print()
+    print("=" * 100)
+    print("Panel 4: Latency (sequential Blend, comparable to PNEUMA Fig. 9)")
+    print("=" * 100)
+    print(
+        f"{'dataset':18} | {'family':6} | {'rerank':6} | "
+        f"{'k=1 p50':>7} | {'k=1 p95':>7} | {'k=5 p50':>7} | {'k=5 p95':>7} | "
+        f"{'vector_p50':>10} | {'vector_p95':>10} | {'q/s':>6}"
+    )
+    print("-" * 100)
+    any_data = False
+    for ds, rows in sorted(rows_by_ds.items()):
+        run_dir = rows[0].get("_run_dir") if rows else None  # injected by main_print_panels
+        qs = "tbd"
+        if run_dir:
+            meta_path = Path(run_dir) / "run_meta.json"
+            if meta_path.exists():
+                try:
+                    meta = json.loads(meta_path.read_text())
+                    wall = meta.get("run_wall_clock_s")
+                    if wall and wall > 0:
+                        n_q = sum(int(r["n_questions"]) for r in rows
+                                  if r["rerank_mode"] == "off" and int(r["k"]) == 1)
+                        if n_q:
+                            qs = f"{n_q / wall:.2f}"
+                except Exception:
+                    pass
+
+        for fam in ("BC2", "BX2"):
+            for mode in ("off", "on"):
+                k1 = next(
+                    (r for r in rows
+                     if r.get("family") == fam
+                     and r.get("rerank_mode") == mode
+                     and int(r["k"]) == 1),
+                    None,
+                )
+                k5 = next(
+                    (r for r in rows
+                     if r.get("family") == fam
+                     and r.get("rerank_mode") == mode
+                     and int(r["k"]) == 5),
+                    None,
+                )
+                if not k1 or not k5:
+                    continue
+                lat_k1_p50 = k1.get("latency_ms_p50", "---")
+                lat_k1_p95 = k1.get("latency_ms_p95", "---")
+                lat_k5_p50 = k5.get("latency_ms_p50", "---")
+                lat_k5_p95 = k5.get("latency_ms_p95", "---")
+                vec_p50 = k1.get("vector_ms_p50", "---")
+                vec_p95 = k1.get("vector_ms_p95", "---")
+
+                def _f1(v: str) -> str:
+                    try:
+                        return f"{float(v):7.1f}"
+                    except (ValueError, TypeError):
+                        return f"{'---':>7}"
+
+                def _f2(v: str) -> str:
+                    try:
+                        return f"{float(v):10.2f}"
+                    except (ValueError, TypeError):
+                        return f"{'---':>10}"
+
+                print(
+                    f"{ds:18} | {fam:6} | {mode:6} | "
+                    f"{_f1(lat_k1_p50)} | {_f1(lat_k1_p95)} | "
+                    f"{_f1(lat_k5_p50)} | {_f1(lat_k5_p95)} | "
+                    f"{_f2(vec_p50)} | {_f2(vec_p95)} | "
+                    f"{qs:>6}"
+                )
+                any_data = True
+    if not any_data:
+        print("(no data - run `make benchmark DATASET=<ds>`)")
+
+
+def main_print_panels(*, results_root: Path | None = None) -> None:
+    """Load all datasets from results_root and print the four comparison panels."""
+    if results_root is None:
+        results_root = _project_root() / "benchmark-data" / "results"
+
+    rows_by_ds: dict[str, list[dict]] = {}
+
+    if not results_root.exists():
+        print(f"(no results root found at {results_root})", file=sys.stderr)
+        _print_panel_1({})
+        _print_panel_2({})
+        _print_panel_3({})
+        _print_panel_4({})
+        return
+
+    for ds_dir in sorted(results_root.iterdir()):
+        if not ds_dir.is_dir():
+            continue
+        latest = _latest_run_dir(ds_dir)
+        if not latest:
+            continue
+        ds = _normalise(ds_dir.name)
+        summary_rows = _read_summary(latest / "summary.csv")
+        # Inject run_dir into each row so Panel 4 can find run_meta.json
+        for r in summary_rows:
+            r["_run_dir"] = str(latest)
+        rows_by_ds[ds] = summary_rows
+
+    _print_panel_1(rows_by_ds)
+    _print_panel_2(rows_by_ds)
+    _print_panel_3(rows_by_ds)
+    _print_panel_4(rows_by_ds)
 
 
 def _project_root() -> Path:
@@ -174,63 +337,9 @@ def main(argv: list[str] | None = None) -> int:
         default=_project_root() / "benchmark-data" / "results",
         help="Root containing <dataset>/<timestamp>/summary.csv (default: benchmark-data/results).",
     )
-    p.add_argument(
-        "--run",
-        type=Path,
-        action="append",
-        default=[],
-        help="Pin a specific run directory (repeatable). Overrides auto-discovery for that dataset.",
-    )
-    p.add_argument(
-        "--dataset",
-        action="append",
-        default=[],
-        help="Restrict to dataset(s). Aliases (chicago, public, ...) accepted.",
-    )
     args = p.parse_args(argv)
 
-    pinned: dict[str, Path] = {}
-    for run in args.run:
-        run = run.resolve()
-        if not (run / "summary.csv").exists():
-            print(f"warning: pinned run has no summary.csv: {run}", file=sys.stderr)
-            continue
-        # Dataset name = parent directory name.
-        pinned[_normalise(run.parent.name)] = run
-
-    requested = {_normalise(d) for d in args.dataset} if args.dataset else None
-
-    comparisons: list[Comparison] = []
-    if not args.results_root.exists() and not pinned:
-        print(f"error: results root does not exist: {args.results_root}", file=sys.stderr)
-        return 2
-
-    if args.results_root.exists():
-        for ds_dir in sorted(args.results_root.iterdir()):
-            if not ds_dir.is_dir():
-                continue
-            ds = _normalise(ds_dir.name)
-            if requested is not None and ds not in requested:
-                continue
-            run_dir = pinned.get(ds) or _latest_run_dir(ds_dir)
-            if run_dir is None:
-                continue  # Empty dataset directory; skip silently.
-            comparisons.append(compare_one(ds, run_dir))
-
-    # Pinned runs whose dataset directory wasn't in results-root.
-    seen = {c.dataset for c in comparisons}
-    for ds, run_dir in pinned.items():
-        if ds in seen:
-            continue
-        if requested is not None and ds not in requested:
-            continue
-        comparisons.append(compare_one(ds, run_dir))
-
-    if not comparisons:
-        print("no benchmark runs found.", file=sys.stderr)
-        return 1
-
-    print_table(comparisons)
+    main_print_panels(results_root=args.results_root)
     return 0
 
 

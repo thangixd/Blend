@@ -37,8 +37,17 @@ def _df_for_value_index(table_id: int, df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_value_shard(
-    table_id: int, file_path: str, want_raw: bool
+    table_id: int,
+    file_path: str,
+    want_raw: bool,
+    want_value: bool = True,
 ) -> WorkerResult:
+    """Compute the value-index Arrow shard (if want_value) plus the raw DataFrame.
+
+    want_value=False skips _df_for_value_index + pa.Table.from_pandas; only
+    the raw DataFrame (if want_raw) is returned. Used by benchmark mode where
+    NLSeeker is the only consumer.
+    """
     fail_on = os.environ.get("_BLEND_FAIL_ON_TID")
     if fail_on is not None and fail_on.isdigit() and int(fail_on) == table_id:
         raise RuntimeError("synthetic worker failure")
@@ -48,6 +57,8 @@ def build_value_shard(
         return WorkerResult(table_id=table_id, value_shard=None, raw_table=None)
 
     raw_df = df if want_raw else None
-    idx_df = _df_for_value_index(table_id, df)
-    idx_arrow = pa.Table.from_pandas(idx_df, preserve_index=False)
-    return WorkerResult(table_id=table_id, value_shard=idx_arrow, raw_table=raw_df)
+    value_shard = None
+    if want_value:
+        idx_df = _df_for_value_index(table_id, df)
+        value_shard = pa.Table.from_pandas(idx_df, preserve_index=False)
+    return WorkerResult(table_id=table_id, value_shard=value_shard, raw_table=raw_df)

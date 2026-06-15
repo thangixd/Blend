@@ -20,8 +20,21 @@ _CACHE_LOCK = threading.Lock()
 _OPENAI_LLM_CONCURRENCY = 256
 
 
+def _is_ollama_endpoint(base_url: str | None) -> bool:
+    """Detect Ollama by port - Ollama defaults to 11434 and rejects 'seed='."""
+    if not base_url:
+        return False
+    return ":11434" in base_url
+
+
 class LLMBackend(Protocol):
-    def generate(self, prompts: Sequence[str], max_new_tokens: int) -> list: ...
+    def generate(
+        self,
+        prompts: Sequence[str],
+        max_new_tokens: int,
+        *,
+        concurrency: int | None = None,
+    ) -> list: ...
 
     @property
     def max_input_tokens(self) -> int: ...
@@ -77,7 +90,16 @@ class _LocalLLM:
         cfg_window = getattr(self._model.config, "max_position_embeddings", None)
         return int(cfg_window or 32768)
 
-    def generate(self, prompts: Sequence[str], max_new_tokens: int) -> list:
+    def generate(
+        self,
+        prompts: Sequence[str],
+        max_new_tokens: int,
+        *,
+        concurrency: int | None = None,
+    ) -> list:
+        # ``concurrency`` is a no-op for the local HF backend (in-process
+        # decoding); accepted only to satisfy the LLMBackend Protocol.
+        del concurrency
         if not prompts:
             return []
         out = []
@@ -272,7 +294,20 @@ class _OpenAILLM:
             truncated = tok.convert_tokens_to_string(tokens[:budget])
         return truncated
 
-    def generate(self, prompts: Sequence[str], max_new_tokens: int) -> list:
+    def generate(
+        self,
+        prompts: Sequence[str],
+        max_new_tokens: int,
+        *,
+        concurrency: int | None = None,
+    ) -> list:
+        """Issue chat-completion prompts to the OpenAI-compat backend.
+
+        concurrency=None (default) uses ThreadPoolExecutor(_OPENAI_LLM_CONCURRENCY).
+        concurrency=1 issues prompts sequentially (no executor) - used by
+        benchmark mode for PNEUMA-shape parity.
+        concurrency>=2 caps the executor at that width.
+        """
         prompt_list = list(prompts)
         n = len(prompt_list)
         if n == 0:
@@ -292,18 +327,27 @@ class _OpenAILLM:
                 "max_tokens": max_new_tokens,
                 "temperature": 0.0,
             }
-            # Ollama rejects unknown fields like ``seed``.
-            if not self.base_url:
+            # D16: send seed=42 unless we're talking to Ollama (which does not honour it).
+            # vLLM honours seed= over OpenAI-compat; OpenAI-proper does too.
+            if not _is_ollama_endpoint(self.base_url):
                 kwargs["seed"] = 42
             resp = self._client.chat.completions.create(**kwargs)
             return (resp.choices[0].message.content or "").strip()
 
-        # Concurrency=1 fast path keeps the call structure (and stack trace
-        # on errors) identical to the original serial loop.
+        if concurrency == 1:
+            return [_one(p) for p in prompt_list]
+
+        # Single-prompt or global-cap=1: serial dispatch keeps the call
+        # structure identical to the simple loop (no executor overhead).
         if n == 1 or _OPENAI_LLM_CONCURRENCY <= 1:
             return [_one(p) for p in prompt_list]
 
-        workers = min(_OPENAI_LLM_CONCURRENCY, n)
+        # Default concurrent path: ThreadPoolExecutor for batched OpenAI-compat
+        # dispatch. concurrency=None falls back to the global
+        # _OPENAI_LLM_CONCURRENCY ceiling; concurrency >= 2 uses that exact
+        # value as the cap.
+        cap = _OPENAI_LLM_CONCURRENCY if concurrency is None else concurrency
+        workers = min(cap, n)
         out: list = [None] * n
         with ThreadPoolExecutor(max_workers=workers) as pool:
             # executor.map preserves submission order in the returned

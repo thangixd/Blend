@@ -22,6 +22,9 @@ class NLSeeker(Seeker):
         alpha: float = None,
         index_name: str = None,
         config_overrides: dict = None,
+        *,
+        rerank: bool = True,
+        judge_concurrency: int | None = None,
     ) -> None:
         super().__init__(k)
 
@@ -30,10 +33,16 @@ class NLSeeker(Seeker):
         self._index_name = index_name or self._cfg.index_name
         self._n = self._cfg.n if n is None else int(n)
         self._alpha = self._cfg.alpha if alpha is None else float(alpha)
+        self._rerank = bool(rerank)
+        self._judge_concurrency = judge_concurrency
 
         self._cached_table_ids = None
+        self._last_metrics: dict | None = None
 
     def create_sql_query(self, db: DBHandler, additionals: str = "") -> str:
+        # Reset metrics so a cache hit yields None (no retrieval ran this call).
+        # _last_metrics reflects the most recent retrieval that actually ran.
+        self._last_metrics = None
         # Combiner contract: ``additionals`` is a TableId IN/NOT IN predicate.
         # Parse and push it into retrieval so top-k is taken inside the
         # allow-list (not post-hoc filtered), then wrap the ranked id list
@@ -46,17 +55,22 @@ class NLSeeker(Seeker):
             self._n,
             self._alpha,
             self._index_name,
+            self._rerank,
+            self._judge_concurrency,
             table_filter.cache_key(),
         )
         if self._cached_table_ids is None or self._cached_table_ids[0] != cache_key:
             engine = _NLEngine.get(self._cfg, index_name=self._index_name)
-            results = engine.search(
+            results, metrics = engine.search_with_metrics(
                 self.query,
                 k=self.k,
                 n=self._n,
                 alpha=self._alpha,
                 table_filter=table_filter,
+                rerank=self._rerank,
+                judge_concurrency=self._judge_concurrency,
             )
+            self._last_metrics = metrics
             ids = [r.table_id for r in results]
             self._cached_table_ids = (cache_key, ids)
         _, ids = self._cached_table_ids
