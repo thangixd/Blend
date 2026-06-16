@@ -12,10 +12,10 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class PaperRef:
-    mixed_k1: float | None    # Fig. 6a - BC2+BX2 weighted at k=1
-    mixed_k5: float | None    # Fig. 6b - BC2+BX2 weighted at k=5
-    content_k1: float | None  # Table 2 - BC2 only at k=1
-    context_k1: float | None  # Table 2 - BX2 only at k=1
+    mixed_k1: float | None    # Fig. 6  (rerank=on, weighted BC2+BX2 at k=1)
+    mixed_k5: float | None    # Fig. 6  (rerank=on, weighted BC2+BX2 at k=5)
+    content_k1: float | None  # Table 2 (rerank=off, BC2 at k=1)
+    context_k1: float | None  # Table 2 (rerank=off, BX2 at k=1)
 
 
 # Numbers read off the paper figures/tables. Fig. 6 bars are reported
@@ -105,7 +105,9 @@ def _delta_or_dash(actual: float | None, ref: float, width: int = 6) -> str:
 def _print_panel_1(rows_by_ds: dict[str, list[dict]]) -> None:
     print()
     print("=" * 100)
-    print("Panel 1: Paper-headline (k=1, k=5; rerank=off; matches paper Fig. 6 / Table 2)")
+    print("Panel 1: Paper-faithful comparison")
+    print("  content_k1 / context_k1 vs Table 2 (§7.3.2 Hybrid, no judge)  -> Blend rerank=off")
+    print("  mixed_k1   / mixed_k5   vs Fig. 6  (§7.1.1 full Pneuma)       -> Blend rerank=on")
     print("=" * 100)
     print(f"{'dataset':18} | {'mixed_k1':>8} | {'paper_k1':>8} | {'Δ pp':>6} | "
           f"{'mixed_k5':>8} | {'paper_k5':>8} | {'Δ pp':>6} | "
@@ -114,25 +116,33 @@ def _print_panel_1(rows_by_ds: dict[str, list[dict]]) -> None:
     print("-" * 100)
     any_data = False
     for ds, rows in sorted(rows_by_ds.items()):
-        off = _filter(rows, rerank_mode="off", k_in={1, 5})
-        if not off:
-            continue
         if ds not in PAPER:
-            print(f"{ds:18} (no paper reference; skipping)")
             continue
         ref = PAPER[ds]
-        bc2 = [r for r in off if r["family"] == "BC2"]
-        bx2 = [r for r in off if r["family"] == "BX2"]
 
-        def mixed(k: int) -> float | None:
+        # Table 2 metrics (no judge) -> rerank=off
+        off = _filter(rows, rerank_mode="off", k_in={1})
+        bc2_off_k1 = next((r for r in off if r["family"] == "BC2"), None)
+        bx2_off_k1 = next((r for r in off if r["family"] == "BX2"), None)
+
+        # Fig. 6 metrics (with judge) -> rerank=on
+        on = _filter(rows, rerank_mode="on", k_in={1, 5})
+        bc2_on = [r for r in on if r["family"] == "BC2"]
+        bx2_on = [r for r in on if r["family"] == "BX2"]
+
+        def mixed_on(k: int) -> float | None:
             return _weighted_mean_hit_rate(
-                [r for r in bc2 if int(r["k"]) == k]
-                + [r for r in bx2 if int(r["k"]) == k]
+                [r for r in bc2_on if int(r["k"]) == k]
+                + [r for r in bx2_on if int(r["k"]) == k]
             )
 
-        m1, m5 = mixed(1), mixed(5)
-        c1 = next((float(r["hit_rate"]) for r in bc2 if int(r["k"]) == 1), None)
-        x1 = next((float(r["hit_rate"]) for r in bx2 if int(r["k"]) == 1), None)
+        if not (bc2_off_k1 or bx2_off_k1 or bc2_on or bx2_on):
+            continue
+
+        m1 = mixed_on(1)
+        m5 = mixed_on(5)
+        c1 = float(bc2_off_k1["hit_rate"]) if bc2_off_k1 else None
+        x1 = float(bx2_off_k1["hit_rate"]) if bx2_off_k1 else None
         print(
             f"{ds:18} | {_fmt_or_dash(m1)} | {ref.mixed_k1:8.2f} | {_delta_or_dash(m1, ref.mixed_k1)} | "
             f"{_fmt_or_dash(m5)} | {ref.mixed_k5:8.2f} | {_delta_or_dash(m5, ref.mixed_k5)} | "
@@ -147,7 +157,9 @@ def _print_panel_1(rows_by_ds: dict[str, list[dict]]) -> None:
 def _print_panel_2(rows_by_ds: dict[str, list[dict]]) -> None:
     print()
     print("=" * 100)
-    print("Panel 2: Blend-with-judge (rerank=on; not in paper; production-class)")
+    print("Panel 2: Judge uplift (rerank=on column already feeds Panel 1's mixed_*)")
+    print("  Uplift_k1 = mixed_k1(rerank=on) - mixed_k1(rerank=off)")
+    print("  i.e. how much the LLM judge adds over Hybrid Retrieval alone (paper §7.3.3 Fig. 13).")
     print("=" * 100)
     print(f"{'dataset':18} | {'mixed_k1':>8} | {'mixed_k5':>8} | "
           f"{'content_k1':>10} | {'context_k1':>10} | {'uplift_k1':>9}")
