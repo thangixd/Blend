@@ -450,13 +450,19 @@ def build_backends(cfg: NLSeekerConfig) -> tuple:
                 _max_input_tokens=cfg.openai_llm_max_input_tokens,
                 tokenizer_id=cfg.openai_llm_tokenizer_id,
             )
-            embedder = _OpenAIEmbedder(
-                model=cfg.openai_embed_model,
-                api_key=cfg.openai_api_key,
-                base_url=cfg.openai_embed_base_url or cfg.openai_base_url,
-                _max_input_tokens=cfg.openai_embed_max_input_tokens,
-                tokenizer_id=cfg.openai_embed_tokenizer_id,
-            )
+            if cfg.local_embedder:
+                embedder = _LocalEmbedder(
+                    embed_path=cfg.embed_path,
+                    hf_token=cfg.hf_token,
+                )
+            else:
+                embedder = _OpenAIEmbedder(
+                    model=cfg.openai_embed_model,
+                    api_key=cfg.openai_api_key,
+                    base_url=cfg.openai_embed_base_url or cfg.openai_base_url,
+                    _max_input_tokens=cfg.openai_embed_max_input_tokens,
+                    tokenizer_id=cfg.openai_embed_tokenizer_id,
+                )
         _BACKEND_CACHE[key] = (llm, embedder)
         return llm, embedder
 

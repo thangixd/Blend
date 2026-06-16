@@ -14,6 +14,11 @@ from scripts.benchmark.datasets import DatasetSpec
 
 
 _TABLE_ID_RE = re.compile(r".*_SEP_(table_\d+)\.csv$")
+# Bookkeeping CSVs prepare itself writes into the lake dir alongside the data
+# tables. Listed by basename so a leading-underscore data table (e.g. FeTaQA's
+# ``.338``/``.458``/``.257`` Wikipedia titles, which become ``_338``/``_458``/
+# ``_257`` after ``_SEP_table_<n>.csv`` flattening) is NOT excluded.
+_BOOKKEEPING_NAMES = frozenset({"_metadata.csv"})
 
 
 @dataclass(frozen=True)
@@ -42,7 +47,7 @@ def prepare(spec: DatasetSpec, out_root: Path) -> PrepareResult:
     manifest = {
         "table_id_to_pneuma_id": {str(k): v for k, v in table_id_to_pneuma_id.items()},
         "pneuma_id_to_table_id": pneuma_id_to_table_id,
-        "lake_glob": str(lake_dir / "[!_]*.csv"),
+        "lake_glob": str(lake_dir / "*.csv"),
         "n_tables": len(pneuma_id_to_table_id),
         "health": {
             "n_context_rows": n_context_rows,
@@ -85,31 +90,41 @@ def _extract_tar(spec: DatasetSpec, lake_dir: Path) -> None:
 
 
 def _build_manifest(lake_dir: Path) -> tuple[dict[str, int], dict[int, str]]:
-    """Assign integer TableIds via ``sorted(glob(*.csv))`` and parse PNEUMA suffixes."""
-    # Exclude underscore-prefixed bookkeeping files (_metadata.csv etc.) from
-    # the lake enumeration so the TableId order matches build_index's call to
-    # run_pipeline. See scripts/benchmark/build_index.py:LAKE_GLOB_PATTERN.
-    files = sorted(glob(str(lake_dir / "[!_]*.csv")))
+    """Assign integer TableIds via ``sorted(glob(*.csv))`` and parse PNEUMA suffixes.
+
+    Enumerates every ``*.csv`` in the lake; basenames in ``_BOOKKEEPING_NAMES``
+    (e.g. ``_metadata.csv``, written into the lake dir by prepare itself) are
+    skipped silently and any other non-matching file still raises.
+    """
+    files = sorted(glob(str(lake_dir / "*.csv")))
     pneuma_id_to_table_id: dict[str, int] = {}
     table_id_to_pneuma_id: dict[int, str] = {}
-    for table_id, path in enumerate(files):
-        m = _TABLE_ID_RE.match(Path(path).name)
+    table_id = 0
+    for path in files:
+        name = Path(path).name
+        if name in _BOOKKEEPING_NAMES:
+            continue
+        m = _TABLE_ID_RE.match(name)
         if not m:
             raise RuntimeError(
-                f"prepare: {Path(path).name!r} does not match PNEUMA's "
+                f"prepare: {name!r} does not match PNEUMA's "
                 "<title>_SEP_table_<n>.csv naming. Refusing to build a "
                 "corrupt manifest."
             )
         pneuma_id = m.group(1)
         if pneuma_id in pneuma_id_to_table_id:
-            other = files[pneuma_id_to_table_id[pneuma_id]]
+            other_tid = pneuma_id_to_table_id[pneuma_id]
+            other_path = next(p for p in files
+                              if (om := _TABLE_ID_RE.match(Path(p).name))
+                              and om.group(1) == pneuma_id and p != path)
             raise RuntimeError(
                 f"prepare: duplicate PNEUMA id {pneuma_id!r} in "
-                f"{Path(other).name!r}, {Path(path).name!r}. Manifest "
+                f"{Path(other_path).name!r}, {name!r}. Manifest "
                 "cannot be bidirectional."
             )
         pneuma_id_to_table_id[pneuma_id] = table_id
         table_id_to_pneuma_id[table_id] = pneuma_id
+        table_id += 1
     return pneuma_id_to_table_id, table_id_to_pneuma_id
 
 

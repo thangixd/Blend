@@ -53,10 +53,11 @@ def build_value_shard(
         raise RuntimeError("synthetic worker failure")
 
     df = _read_table(Path(file_path))
-    if df.empty:
-        return WorkerResult(table_id=table_id, value_shard=None, raw_table=None)
-
     raw_df = df if want_raw else None
+
+    if df.empty:
+        return WorkerResult(table_id=table_id, value_shard=None, raw_table=raw_df)
+
     value_shard = None
     if want_value:
         idx_df = _df_for_value_index(table_id, df)

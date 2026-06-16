@@ -10,7 +10,8 @@ from pathlib import Path
 LOG = logging.getLogger(__name__)
 
 
-LAKE_GLOB_PATTERN = "[!_]*.csv"
+LAKE_GLOB_PATTERN = "*.csv"
+LAKE_BOOKKEEPING_NAMES = frozenset({"_metadata.csv"})
 
 
 def _dir_nonempty(p: Path) -> bool:
@@ -45,8 +46,16 @@ def write_benchmark_config(
     embed_tokenizer_id: str = "BAAI/bge-base-en-v1.5",
     llm_max_input_tokens: int = 32768,
     llm_tokenizer_id: str = "Qwen/Qwen2.5-7B-Instruct",
+    local_embedder: bool = True,
 ) -> None:
-    """Render the per-dataset config.ini consumed by run_pipeline()."""
+    """Render the per-dataset config.ini consumed by run_pipeline().
+
+    ``local_embedder=True`` (the benchmark default) loads the embedder via
+    sentence-transformers locally rather than through vLLM's /v1/embeddings.
+    The embed_base_url / embed_model knobs are
+    written either way for config completeness; they're ignored at runtime
+    when local_embedder is True.
+    """
     parser = configparser.ConfigParser()
     parser["Database"] = {
         "dbms": "duckdb",
@@ -57,6 +66,7 @@ def write_benchmark_config(
         "out_path": str(nl_out_path),
         "index_name": index_name,
         "use_local_model": "false",
+        "local_embedder": "true" if local_embedder else "false",
         "openai_api_key": "vllm-local",
         "openai_base_url": llm_base_url,
         "openai_llm_model": llm_model,
@@ -66,6 +76,7 @@ def write_benchmark_config(
         "openai_embed_model": embed_model,
         "openai_embed_max_input_tokens": str(embed_max_input_tokens),
         "openai_embed_tokenizer_id": embed_tokenizer_id,
+        "embed_path": embed_tokenizer_id,
         "alpha": "0.5",
         "n": "5",
         "default_k": "10",
@@ -86,9 +97,15 @@ def build_index(
     embed_base_url: str = "http://127.0.0.1:8002/v1",
     embed_model: str = "bge-base-en-v1.5",
     embed_max_input_tokens: int = 512,
+    local_embedder: bool = True,
     force: bool = False,
 ) -> BuildResult:
     """Render a per-dataset config.ini and call run_pipeline() over the lake.
+
+    ``local_embedder=True`` (the default) routes the embedder through
+    sentence-transformers locally rather than the vLLM /v1/embeddings
+    endpoint - the paper-faithful path. The vLLM embedder remains
+    available for callers that pass ``local_embedder=False``.
 
     Reuses an existing index unless ``force`` is True.
     """
@@ -100,6 +117,7 @@ def build_index(
 
     nl_vector_path = nl_out_path / "indexes" / "vector" / index_name
     nl_fulltext_path = nl_out_path / "indexes" / "fulltext" / index_name
+    wall_clock_path = index_dir / "_build_wall_clock_s.txt"
     # value_index is disabled in benchmark mode; don't gate on the
     # blend_index DuckDB table; only the NL sub-dirs need to be present.
     index_complete = (
@@ -120,8 +138,18 @@ def build_index(
             embed_base_url=embed_base_url,
             embed_model=embed_model,
             embed_max_input_tokens=embed_max_input_tokens,
+            local_embedder=local_embedder,
         )
-        return BuildResult(duckdb_path, nl_out_path, index_name, config_path, 0.0)
+        # Recover the wall-clock from the previous build so run_meta.json
+        # carries the real cost rather than 0.0. Falls back to 0.0 only when
+        # the index pre-dates this sidecar (e.g. an older artifact).
+        prior_wall = 0.0
+        if wall_clock_path.exists():
+            try:
+                prior_wall = float(wall_clock_path.read_text().strip())
+            except ValueError:
+                LOG.warning("Unparseable %s; reporting 0.0", wall_clock_path)
+        return BuildResult(duckdb_path, nl_out_path, index_name, config_path, prior_wall)
 
     if duckdb_path.exists():
         duckdb_path.unlink()
@@ -140,6 +168,7 @@ def build_index(
         embed_base_url=embed_base_url,
         embed_model=embed_model,
         embed_max_input_tokens=embed_max_input_tokens,
+        local_embedder=local_embedder,
     )
 
     metadata_path = lake_dir / "_metadata.csv"
@@ -159,12 +188,17 @@ def build_index(
         config_path=config_path,
         nl_index=True,
         metadata_path=metadata_path,
-        workers=1,                    
-        value_index=False,            
-        pre_chunked_contexts=True,    
+        workers=1,
+        value_index=False,
+        pre_chunked_contexts=True,
+        lake_exclude_names=LAKE_BOOKKEEPING_NAMES,
     )
     wall = time.perf_counter() - t0
+    # Persist alongside the index so a subsequent reuse-path build can recover
+    # the real cost for run_meta.json instead of reporting 0.0.
+    wall_clock_path.write_text(f"{wall:.3f}\n")
     return BuildResult(duckdb_path, nl_out_path, index_name, config_path, wall)
 
 
-__all__ = ["build_index", "write_benchmark_config", "BuildResult", "LAKE_GLOB_PATTERN"]
+__all__ = ["build_index", "write_benchmark_config", "BuildResult",
+           "LAKE_GLOB_PATTERN", "LAKE_BOOKKEEPING_NAMES"]

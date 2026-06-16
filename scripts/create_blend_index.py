@@ -254,6 +254,12 @@ def _run_parallel_ingest(
                         contexts=contexts_by_tid.get(table_id),
                         pre_chunked_contexts=pre_chunked_contexts,
                     )
+                elif nl_builder is not None and contexts_by_tid.get(table_id):
+                    LOG.warning(
+                        "TableId=%d: %d contexts present but raw_table is None; "
+                        "contexts will not be indexed for this table.",
+                        table_id, len(contexts_by_tid[table_id]),
+                    )
         else:
             LOG.info(
                 "Parallel value-index ingest with %d workers (lake=%d)",
@@ -291,6 +297,12 @@ def _run_parallel_ingest(
                                 contexts=contexts_by_tid.get(table_id),
                                 pre_chunked_contexts=pre_chunked_contexts,
                             )
+                        elif nl_builder is not None and contexts_by_tid.get(table_id):
+                            LOG.warning(
+                                "TableId=%d: %d contexts present but raw_table is None; "
+                                "contexts will not be indexed for this table.",
+                                table_id, len(contexts_by_tid[table_id]),
+                            )
                 except BaseException:
                     # Drop queued-but-not-started work promptly; let the with
                     # block's exit join the workers.
@@ -321,14 +333,24 @@ def _run_parallel_ingest(
         raise
 
 
-def _iter_lake(lake_path: str) -> list[tuple[int, Path]]:
+def _iter_lake(
+    lake_path: str,
+    exclude_names: Optional[frozenset] = None,
+) -> list[tuple[int, Path]]:
     """Enumerate the lake into ``[(TableId, Path), ...]``.
 
     ``sorted(glob(lake_path))`` is the canonical TableId source. Reordering it
     would break the shared TableId namespace between the value-index and the
     NL-index, so no sort key is exposed.
+
+    ``exclude_names`` filters out files by basename before TableIds are
+    assigned. The benchmark uses this to skip ``_metadata.csv`` (written into
+    the lake dir by prepare) without resorting to a glob pattern that also
+    drops legitimate tables whose titles start with ``_``.
     """
     files = sorted(glob(lake_path, recursive=True))
+    if exclude_names:
+        files = [p for p in files if Path(p).name not in exclude_names]
     return [(idx, Path(p)) for idx, p in enumerate(files)]
 
 
@@ -378,6 +400,7 @@ def run_pipeline(
     workers: int = 1,
     value_index: bool = True,
     pre_chunked_contexts: bool = False,
+    lake_exclude_names: Optional[frozenset] = None,
 ) -> None:
     """End-to-end driver shared by the CLI and any programmatic caller.
 
@@ -398,7 +421,7 @@ def run_pipeline(
     """
     db_cfg = _read_db_section(config_path)
     table_name = db_cfg["index_table"]
-    files = _iter_lake(lake_path)
+    files = _iter_lake(lake_path, exclude_names=lake_exclude_names)
     if not files:
         raise SystemExit(f"No files matched lake pattern {lake_path!r}")
 

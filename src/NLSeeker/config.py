@@ -19,6 +19,10 @@ class NLSeekerConfig:
     out_path: Path = field(default=_PROJECT_ROOT / "nl-out")
     index_name: str = "blend_nl_index"
     use_local_model: bool = True
+    # Mixed mode: when ``use_local_model`` is False (LLM goes through OpenAI/
+    # vLLM), ``local_embedder=True`` still loads the embedder via
+    # sentence-transformers locally. No effect when use_local_model is True.
+    local_embedder: bool = False
     llm_path: str = "Qwen/Qwen2.5-7B-Instruct"
     embed_path: str = "BAAI/bge-base-en-v1.5"
     hf_token: str = ""
@@ -75,6 +79,7 @@ class NLSeekerConfig:
                 "out_path",
                 "index_name",
                 "use_local_model",
+                "local_embedder",
                 "llm_path",
                 "embed_path",
                 "openai_base_url",
