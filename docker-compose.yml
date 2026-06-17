@@ -6,13 +6,34 @@ services:
     network_mode: host
     working_dir: /app
 
+    # On lyra: gpu 0 is held by vLLM-Qwen (~37 GB) and gpu 4 by vLLM-bge
+    # (~6.5 GB); gpus 1, 2, 3, 5, 6, 7 sit idle. The bench container needs
+    # one of those for the local sentence-transformers embedder. We expose
+    # all GPUs to the container and pin the embedder to gpu 1 via
+    # CUDA_VISIBLE_DEVICES below — adjust there if the layout changes.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
     volumes:
       - ./benchmark-data:/app/benchmark-data
       - ./EvaluationDataFromPneuma:/app/EvaluationDataFromPneuma:ro
       - ./Makefile:/app/Makefile:ro
+      # Persist the HuggingFace cache so bge-base (~440 MB) doesn't
+      # re-download on every `up --build`.
+      - hf-cache:/root/.cache/huggingface
 
     environment:
       PYTHONHASHSEED: "0"
+      # Pin the embedder to a single idle A100; do not race vLLM for VRAM.
+      CUDA_VISIBLE_DEVICES: "1"
 
     command: ["tail", "-f", "/dev/null"]
     restart: unless-stopped
+
+volumes:
+  hf-cache:

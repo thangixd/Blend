@@ -228,32 +228,20 @@ def _print_panel_3(rows_by_ds: dict[str, list[dict]]) -> None:
 def _print_panel_4(rows_by_ds: dict[str, list[dict]]) -> None:
     print()
     print("=" * 100)
-    print("Panel 4: Latency (sequential Blend, comparable to PNEUMA Fig. 9)")
+    print("Panel 4: Online query throughput (paper §7.2.1 / Fig. 9)")
+    print("  Paper: 100-question subset, 10x averaged, full Pneuma (=judge on) at k=1.")
+    print("  q/s = 1000 / latency_ms_mean of the matching cell. Compare paper Fig. 9 against")
+    print("  the 'k=1 rerank=on' rows below; the rerank=off rows show the Hybrid-only baseline.")
     print("=" * 100)
     print(
         f"{'dataset':18} | {'family':6} | {'rerank':6} | "
-        f"{'k=1 p50':>7} | {'k=1 p95':>7} | {'k=5 p50':>7} | {'k=5 p95':>7} | "
+        f"{'k=1 mean':>9} | {'k=1 p50':>7} | {'k=1 p95':>7} | "
+        f"{'k=5 mean':>9} | {'k=5 p50':>7} | {'k=5 p95':>7} | "
         f"{'vector_p50':>10} | {'vector_p95':>10} | {'q/s':>6}"
     )
     print("-" * 100)
     any_data = False
     for ds, rows in sorted(rows_by_ds.items()):
-        run_dir = rows[0].get("_run_dir") if rows else None  # injected by main_print_panels
-        qs = "tbd"
-        if run_dir:
-            meta_path = Path(run_dir) / "run_meta.json"
-            if meta_path.exists():
-                try:
-                    meta = json.loads(meta_path.read_text())
-                    wall = meta.get("run_wall_clock_s")
-                    if wall and wall > 0:
-                        n_q = sum(int(r["n_questions"]) for r in rows
-                                  if r["rerank_mode"] == "off" and int(r["k"]) == 1)
-                        if n_q:
-                            qs = f"{n_q / wall:.2f}"
-                except Exception:
-                    pass
-
         for fam in ("BC2", "BX2"):
             for mode in ("off", "on"):
                 k1 = next(
@@ -272,18 +260,35 @@ def _print_panel_4(rows_by_ds: dict[str, list[dict]]) -> None:
                 )
                 if not k1 or not k5:
                     continue
+                lat_k1_mean = k1.get("latency_ms_mean", "---")
                 lat_k1_p50 = k1.get("latency_ms_p50", "---")
                 lat_k1_p95 = k1.get("latency_ms_p95", "---")
+                lat_k5_mean = k5.get("latency_ms_mean", "---")
                 lat_k5_p50 = k5.get("latency_ms_p50", "---")
                 lat_k5_p95 = k5.get("latency_ms_p95", "---")
                 vec_p50 = k1.get("vector_ms_p50", "---")
                 vec_p95 = k1.get("vector_ms_p95", "---")
+
+                # Per-cell throughput: 1000 / mean k=1 latency. This is the
+                # apples-to-apples q/s for paper Fig. 9 when rerank=on (full
+                # Pneuma) and the no-judge baseline when rerank=off.
+                try:
+                    qs_value = 1000.0 / float(lat_k1_mean)
+                    qs = f"{qs_value:6.2f}"
+                except (ValueError, TypeError, ZeroDivisionError):
+                    qs = "  ----"
 
                 def _f1(v: str) -> str:
                     try:
                         return f"{float(v):7.1f}"
                     except (ValueError, TypeError):
                         return f"{'---':>7}"
+
+                def _f1m(v: str) -> str:
+                    try:
+                        return f"{float(v):9.1f}"
+                    except (ValueError, TypeError):
+                        return f"{'---':>9}"
 
                 def _f2(v: str) -> str:
                     try:
@@ -293,14 +298,60 @@ def _print_panel_4(rows_by_ds: dict[str, list[dict]]) -> None:
 
                 print(
                     f"{ds:18} | {fam:6} | {mode:6} | "
-                    f"{_f1(lat_k1_p50)} | {_f1(lat_k1_p95)} | "
-                    f"{_f1(lat_k5_p50)} | {_f1(lat_k5_p95)} | "
+                    f"{_f1m(lat_k1_mean)} | {_f1(lat_k1_p50)} | {_f1(lat_k1_p95)} | "
+                    f"{_f1m(lat_k5_mean)} | {_f1(lat_k5_p50)} | {_f1(lat_k5_p95)} | "
                     f"{_f2(vec_p50)} | {_f2(vec_p95)} | "
-                    f"{qs:>6}"
+                    f"{qs}"
                 )
                 any_data = True
     if not any_data:
         print("(no data - run `make benchmark DATASET=<ds>`)")
+
+
+@dataclass(frozen=True)
+class Comparison:
+    """Per-dataset Blend numbers paired with their paper references.
+
+    Built by ``compare_one`` so the plot script and the printed panels share
+    one source of truth on the rerank-mode mapping (Table 2 -> rerank=off,
+    Fig. 6 -> rerank=on)."""
+    dataset: str
+    ours_mixed_k1: float | None
+    ours_mixed_k5: float | None
+    ours_content_k1: float | None
+    ours_context_k1: float | None
+
+
+def compare_one(dataset: str, run_dir: Path) -> Comparison:
+    """Extract Blend's four headline numbers for one dataset.
+
+    The mode mapping mirrors ``_print_panel_1``: content/context_k1 come from
+    the rerank=off rows (paper Table 2 setup, no judge); mixed_k1/k5 come
+    from rerank=on rows (paper Fig. 6 setup, full Pneuma with judge).
+    """
+    rows = _read_summary(run_dir / "summary.csv")
+
+    off = _filter(rows, rerank_mode="off", k_in={1})
+    bc2_off_k1 = next((r for r in off if r["family"] == "BC2"), None)
+    bx2_off_k1 = next((r for r in off if r["family"] == "BX2"), None)
+
+    on = _filter(rows, rerank_mode="on", k_in={1, 5})
+    bc2_on = [r for r in on if r["family"] == "BC2"]
+    bx2_on = [r for r in on if r["family"] == "BX2"]
+
+    def _mixed_on(k: int) -> float | None:
+        return _weighted_mean_hit_rate(
+            [r for r in bc2_on if int(r["k"]) == k]
+            + [r for r in bx2_on if int(r["k"]) == k]
+        )
+
+    return Comparison(
+        dataset=dataset,
+        ours_mixed_k1=_mixed_on(1),
+        ours_mixed_k5=_mixed_on(5),
+        ours_content_k1=float(bc2_off_k1["hit_rate"]) if bc2_off_k1 else None,
+        ours_context_k1=float(bx2_off_k1["hit_rate"]) if bx2_off_k1 else None,
+    )
 
 
 def main_print_panels(*, results_root: Path | None = None) -> None:
