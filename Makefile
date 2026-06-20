@@ -7,7 +7,8 @@ COMPOSE ?= docker compose
         benchmark-all benchmark-compare benchmark-clean-all \
         benchmark-test benchmark-test-vllm \
         build up down shell bench logs \
-        pneuma-bench pneuma-bench-all pneuma-delete-benchdata
+        pneuma-bench pneuma-bench-all pneuma-delete-benchdata \
+        pneuma-bench-container
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -131,6 +132,9 @@ shell:  ## Open bash inside the running blend container.
 
 bench:  ## Run `make benchmark-all` inside the container (results land in benchmark-data/results/ on the host).
 	$(COMPOSE) exec blend make benchmark-all
+
+pneuma-bench-container:  ## Run `make pneuma-bench-all` inside the container (results land in pneumaBenchdata/ on the host).
+	$(COMPOSE) exec blend make pneuma-bench-all
 
 logs:  ## Tail the blend container's logs.
 	$(COMPOSE) logs -f blend

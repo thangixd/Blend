@@ -16,8 +16,18 @@ services:
 
     volumes:
       - ./benchmark-data:/app/benchmark-data
+      - ./pneumaBenchdata:/app/pneumaBenchdata
       - ./EvaluationDataFromPneuma:/app/EvaluationDataFromPneuma:ro
       - ./Makefile:/app/Makefile:ro
+      # Mount the vendored PNEUMA source so pneuma_patches' sys.path
+      # splicing finds it inside the container.  Read-only — patches at
+      # runtime, never edits the source.
+      - ./pneuma:/app/pneuma:ro
+      # Mount the bench-side scripts so we don't need a rebuild to pick up
+      # pneuma_run / pneuma_patches / pneuma_cli edits.
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
       # Persist the HuggingFace cache so bge-base (~440 MB) doesn't
       # re-download on every `up --build`.
       - hf-cache:/root/.cache/huggingface
