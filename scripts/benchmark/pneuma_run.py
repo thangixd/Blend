@@ -206,31 +206,21 @@ def _evaluate(
     stemmer = Stemmer.Stemmer("english")
     increased_k = k * n
 
-    # Embed the query via the collection's own embedding function so we don't
-    # need to know which embedder PNEUMA was built with.  ChromaDB exposes
-    # the embedding function on the collection.  We REQUIRE the embedding
-    # function to be present (PNEUMA always attaches one at build time):
-    # this keeps ``vector_ms`` unambiguously "HNSW lookup only" — it does
-    # not include query embedding cost, mirroring Blend's matvec-only
-    # ``vector_ms`` scope (see ``src/NLSeeker/retrieve.py:274-276``).
-    embed_fn = getattr(collection, "_embedding_function", None)
-    if embed_fn is None:
+    embedder_factory = kwargs.get("embedder_factory")
+    if embedder_factory is None:
         raise RuntimeError(
-            "ChromaDB collection has no _embedding_function attached; "
-            "expected PNEUMA's bge-base SentenceTransformer.  "
-            "Re-run ``pneuma-bench`` to rebuild the index."
+            "_evaluate requires an ``embedder_factory`` kwarg (zero-arg "
+            "callable returning a SentenceTransformer compatible with "
+            "PNEUMA's index).  ``run_pneuma_benchmark`` provides one; "
+            "callers that mock ``_evaluate`` don't reach this branch."
         )
-    question_embedding = embed_fn([query])[0]
+    embedder = embedder_factory()
+    question_embedding = np.asarray(
+        embedder.encode([query], device="cuda")[0], dtype=np.float32
+    ).tolist()
 
     query_tokens = bm25s.tokenize(query, stemmer=stemmer, show_progress=False)
 
-    # ---- Vector retrieval (timed in isolation) ---------------------------
-    # ``vector_ms`` brackets ONLY the HNSW lookup over the precomputed
-    # vector index — query embedding (above) and bm25 / hybrid / rerank
-    # (below) are excluded.  This matches Blend's brute-force-matvec timer
-    # scope at ``src/NLSeeker/retrieve.py:274-276``, so the resulting
-    # ``vector_ms`` is the apples-to-apples HNSW vs brute-force comparison
-    # the bench is designed to surface.
     t_vec = time.perf_counter()
     vec_res = collection.query(
         query_embeddings=[question_embedding],
@@ -248,23 +238,10 @@ def _evaluate(
     dictionary_id_bm25 = _build_dictionary_id_bm25(retriever)
     rmode_enum = RerankingMode.LLM if rerank_mode == "on" else RerankingMode.NONE
 
-    # ``prompt_pipeline`` (used by HybridRetriever._llm_rerank when
-    # reranking_mode=LLM) is patched by ``apply_patches`` to route through
-    # the same vLLM client as ``prompt_openai_llm``.  The reranker handle
-    # is therefore unused at runtime — we pass ``None`` and the patched
-    # ``prompt_pipeline`` ignores it, mirroring Blend's NLSeeker rerank
-    # path (one HTTP roundtrip per candidate, deterministic sampling,
-    # judge-timed inside ``JUDGE_TIMER.judging()``).
+
     reranker = kwargs.get("reranker")
     hybrid_retriever = HybridRetriever(reranker, rmode_enum)
 
-    # ``HybridRetriever._llm_rerank`` is monkeypatched by ``apply_patches``
-    # to wrap its body in ``JUDGE_TIMER.judging()`` (see
-    # ``pneuma_patches._patch_llm_rerank_judge_scope``).  That gives
-    # byte-identical scope with Blend's ``with JUDGE_TIMER.judging():
-    # answers = llm.generate(...)`` at ``src/NLSeeker/retrieve.py:420-421``.
-    # No outer ``judging()`` wrap needed here — the timer fires only when
-    # _llm_rerank actually runs (i.e. ``rerank_mode='on'``).
     all_nodes = hybrid_retriever.retrieve(
         retriever,
         collection,
@@ -471,6 +448,7 @@ def run_pneuma_benchmark(
     endpoints: dict | None = None,
     judge_model_id: str = "Qwen2.5-7B-Instruct",
     embedder_model_id: str = "BAAI/bge-base-en-v1.5",
+    embedder: Any | None = None,
     n: int = N,
     alpha: float = ALPHA,
 ) -> Path:
@@ -501,6 +479,14 @@ def run_pneuma_benchmark(
     # (family, question, rerank_mode, k) tuples.
     collection = _open_collection(Path(index_dir))
     retriever = _open_retriever(Path(index_dir))
+
+    _embedder_box: list[Any] = [embedder]  # closed over below
+
+    def _get_embedder() -> Any:
+        if _embedder_box[0] is None:
+            from scripts.benchmark.pneuma_build import _build_sentence_transformer
+            _embedder_box[0] = _build_sentence_transformer(embedder_model_id)
+        return _embedder_box[0]
 
     per_query: list[PerQueryRecord] = []
     n_questions_by_family: dict[str, int] = {}
@@ -549,6 +535,7 @@ def run_pneuma_benchmark(
                         alpha=alpha,
                         rerank_mode=rerank_mode,
                         in_judge_ctx=in_judge_ctx,
+                        embedder_factory=_get_embedder,
                     )
                     latency_ms = (time.perf_counter() - t0) * 1000.0
                     # JUDGE_TIMER is thread-local; _evaluate must run on

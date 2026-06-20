@@ -41,6 +41,7 @@ import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # Importing pneuma_patches splices ``<repo>/pneuma/src`` onto sys.path
 # (see the module-level block at the top of pneuma_patches.py); we don't
@@ -73,7 +74,12 @@ class BuildResult:
     size_bytes: int
 
 
-def build_pneuma_index(dataset: str, *, force: bool = False) -> BuildResult:
+def build_pneuma_index(
+    dataset: str,
+    *,
+    force: bool = False,
+    embed_model: Any | None = None,
+) -> BuildResult:
     out = INDEX_ROOT / dataset
     lake = LAKE_ROOT / dataset
     wall_clock_path = out / "_build_wall_clock_s.txt"
@@ -101,6 +107,10 @@ def build_pneuma_index(dataset: str, *, force: bool = False) -> BuildResult:
         embed_path="BAAI/bge-base-en-v1.5",
         max_llm_batch_size=50,  # matches Blend NLSeekerConfig default
     )
+
+    if embed_model is None:
+        embed_model = _build_sentence_transformer("BAAI/bge-base-en-v1.5")
+    pneuma.embed_model = embed_model
 
     t0 = time.monotonic()
     pneuma.setup()
@@ -147,41 +157,7 @@ def _write_pneuma_metadata_csv(
     tables_view: Path,
     out: Path,
 ) -> Path | None:
-    """Translate Blend's ``_metadata.csv`` into PNEUMA's expected schema.
 
-    PNEUMA's ``__read_metadata_file`` (vendored at
-    ``pneuma/src/pneuma/registrar/registrar.py:408-424``) does:
-
-        metadata_df = pd.read_csv(metadata_path)
-        for index, row in metadata_df.iterrows():
-            table_id = row["table_id"]      # NB: lowercase, "table_id"
-            metadata_content = row["value"]  # NB: "value", not "Context"
-
-    and the ``table_id`` value must match the path under which the table
-    was registered in ``add_tables`` — i.e. the symlink path inside
-    ``tables_view``.  Blend's ``_metadata.csv`` uses ``TableId, Context``
-    with integer TableIds (0..N-1) keyed off ``_manifest.json``.
-
-    We rebuild the metadata file as ``table_id, value`` where:
-
-      * ``table_id`` = ``str(tables_view / <basename>_SEP_table_<n>.csv)``
-        — exactly what PNEUMA stored as ``table_status.id`` during
-        ``add_tables`` (``registrar.py:325``).
-      * ``value``    = the matching ``Context`` string.
-
-    The mapping from integer Blend ``TableId`` → ``<basename>_SEP_table_<n>.csv``
-    filename comes from ``lake / *.csv`` enumeration (sorted, in the same
-    order ``prepare()`` used to assign integer TableIds).
-
-    Returns the output path on success, or ``None`` if no metadata rows
-    survived translation (caller logs and skips ``add_metadata``).
-    """
-    # Reconstruct integer-TableId → table-view-symlink mapping.  Order
-    # matches prepare._build_manifest: sorted glob over lake/*.csv,
-    # skipping bookkeeping files.  The result is the same path PNEUMA
-    # registered each table under (since add_tables walks tables_view/
-    # via os.listdir, but registrar.py:325 stores the path it received
-    # from __read_table_file which is os.path.join(tables_view, name)).
     tid_to_view_path: dict[str, str] = {}
     table_id_int = 0
     for entry in sorted(lake.iterdir()):
@@ -262,10 +238,20 @@ def _du_sb(path: Path) -> int:
     return total
 
 
+def _build_sentence_transformer(name: str) -> Any:
+    import torch  # local import: avoids a torch dep on this module's importers
+    from sentence_transformers import SentenceTransformer
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logger.info("Loading PNEUMA embedder %s on %s", name, device)
+    return SentenceTransformer(name, device=device)
+
+
 __all__ = [
     "build_pneuma_index",
     "BuildResult",
     "PNEUMA_ROOT",
     "INDEX_ROOT",
     "LAKE_ROOT",
+    "_build_sentence_transformer",
 ]

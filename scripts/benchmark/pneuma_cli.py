@@ -42,11 +42,6 @@ def _do_run(args: argparse.Namespace) -> int:
     ds = args.dataset
     lake_dir = LAKE_ROOT / ds
     index_dir = INDEX_ROOT / ds
-    # Resolve ``content.jsonl`` from the DatasetSpec (points into
-    # ``EvaluationDataFromPneuma/``) — same source Blend's ``cli.py`` uses
-    # at line 104.  ``prepare()`` does not copy this file into the lake;
-    # both runners read it from the spec so the question text is byte-
-    # identical across Blend / PNEUMA bench output.
     content_jsonl = DATASETS[ds].content_jsonl
     ts = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
     run_dir = RESULTS_ROOT / ds / ts
