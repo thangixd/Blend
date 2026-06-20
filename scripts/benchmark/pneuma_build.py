@@ -16,13 +16,25 @@ ingests every CSV/Parquet it finds.  Our lake also contains a
 ``_metadata.csv`` bookkeeping file (``TableId,Context``) which PNEUMA
 would mistake for a table.  This module therefore mirrors the lake into
 a sibling ``_tables_view/`` directory containing only the table files,
-points ``add_tables`` at that view, and feeds the original
-``_metadata.csv`` to ``add_metadata``.  The view is built with relative
-symlinks so it costs nothing on disk and stays in sync if the lake is
-regenerated.
+points ``add_tables`` at that view, and feeds a translated metadata
+file (see ``_write_pneuma_metadata_csv`` below) to ``add_metadata``.
+
+Two metadata-schema details PNEUMA enforces (``registrar.py:408-424``):
+
+  * Column names must be ``table_id, value`` (lowercase, "value", not
+    ``TableId, Context`` like Blend writes).
+  * Each ``table_id`` must equal the path the table was registered under
+    in ``add_tables`` — i.e. the symlink path inside ``_tables_view/``,
+    not the integer ``TableId`` from the lake's ``_manifest.json``.
+
+We therefore translate Blend's ``_metadata.csv`` into a sidecar
+``_metadata_pneuma.csv`` under the index dir before calling
+``add_metadata``.  Blend's file stays untouched so NLSeeker's bench can
+still consume it.
 """
 from __future__ import annotations
 
+import csv
 import logging
 import os
 import shutil
@@ -45,6 +57,7 @@ INDEX_ROOT = PNEUMA_ROOT / "indexes"
 LAKE_ROOT = PNEUMA_ROOT / "lakes"
 
 _METADATA_NAME = "_metadata.csv"
+_PNEUMA_METADATA_NAME = "_metadata_pneuma.csv"
 _TABLES_VIEW_NAME = "_tables_view"
 
 
@@ -93,7 +106,21 @@ def build_pneuma_index(dataset: str, *, force: bool = False) -> BuildResult:
     pneuma.setup()
     pneuma.add_tables(str(tables_view), creator="bench", source="file")
     if metadata_src.exists():
-        pneuma.add_metadata(str(metadata_src))
+        pneuma_metadata = _write_pneuma_metadata_csv(
+            blend_metadata=metadata_src,
+            lake=lake,
+            tables_view=tables_view,
+            out=out / _PNEUMA_METADATA_NAME,
+        )
+        if pneuma_metadata is None:
+            logger.warning(
+                "Lake %s has _metadata.csv but no rows survived translation "
+                "(missing manifest, no matching symlinks, or empty file) — "
+                "context strings will be absent from the index.",
+                lake,
+            )
+        else:
+            pneuma.add_metadata(str(pneuma_metadata))
     else:
         logger.warning(
             "No _metadata.csv found in lake %s — context strings will be absent "
@@ -111,6 +138,88 @@ def build_pneuma_index(dataset: str, *, force: bool = False) -> BuildResult:
         build_wall_clock_s=build_s,
         size_bytes=_du_sb(out),
     )
+
+
+def _write_pneuma_metadata_csv(
+    *,
+    blend_metadata: Path,
+    lake: Path,
+    tables_view: Path,
+    out: Path,
+) -> Path | None:
+    """Translate Blend's ``_metadata.csv`` into PNEUMA's expected schema.
+
+    PNEUMA's ``__read_metadata_file`` (vendored at
+    ``pneuma/src/pneuma/registrar/registrar.py:408-424``) does:
+
+        metadata_df = pd.read_csv(metadata_path)
+        for index, row in metadata_df.iterrows():
+            table_id = row["table_id"]      # NB: lowercase, "table_id"
+            metadata_content = row["value"]  # NB: "value", not "Context"
+
+    and the ``table_id`` value must match the path under which the table
+    was registered in ``add_tables`` — i.e. the symlink path inside
+    ``tables_view``.  Blend's ``_metadata.csv`` uses ``TableId, Context``
+    with integer TableIds (0..N-1) keyed off ``_manifest.json``.
+
+    We rebuild the metadata file as ``table_id, value`` where:
+
+      * ``table_id`` = ``str(tables_view / <basename>_SEP_table_<n>.csv)``
+        — exactly what PNEUMA stored as ``table_status.id`` during
+        ``add_tables`` (``registrar.py:325``).
+      * ``value``    = the matching ``Context`` string.
+
+    The mapping from integer Blend ``TableId`` → ``<basename>_SEP_table_<n>.csv``
+    filename comes from ``lake / *.csv`` enumeration (sorted, in the same
+    order ``prepare()`` used to assign integer TableIds).
+
+    Returns the output path on success, or ``None`` if no metadata rows
+    survived translation (caller logs and skips ``add_metadata``).
+    """
+    # Reconstruct integer-TableId → table-view-symlink mapping.  Order
+    # matches prepare._build_manifest: sorted glob over lake/*.csv,
+    # skipping bookkeeping files.  The result is the same path PNEUMA
+    # registered each table under (since add_tables walks tables_view/
+    # via os.listdir, but registrar.py:325 stores the path it received
+    # from __read_table_file which is os.path.join(tables_view, name)).
+    tid_to_view_path: dict[str, str] = {}
+    table_id_int = 0
+    for entry in sorted(lake.iterdir()):
+        if not entry.is_file() or not entry.name.endswith(".csv"):
+            continue
+        if entry.name == _METADATA_NAME:
+            continue
+        view_path = tables_view / entry.name
+        if not view_path.exists():
+            # Lake has a CSV with no symlink in the view — skip.  Should
+            # only happen if the view is stale; _materialize_tables_view
+            # rebuilds it fresh each call, so this is defensive.
+            table_id_int += 1
+            continue
+        tid_to_view_path[str(table_id_int)] = str(view_path)
+        table_id_int += 1
+
+    n_rows = 0
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with blend_metadata.open() as f_in, out.open("w", newline="") as f_out:
+        reader = csv.DictReader(f_in)
+        writer = csv.writer(f_out)
+        writer.writerow(["table_id", "value"])
+        for row in reader:
+            blend_tid = row.get("TableId")
+            context = row.get("Context", "")
+            if blend_tid is None or not context:
+                continue
+            view_path = tid_to_view_path.get(str(blend_tid))
+            if view_path is None:
+                continue
+            writer.writerow([view_path, context])
+            n_rows += 1
+
+    if n_rows == 0:
+        out.unlink(missing_ok=True)
+        return None
+    return out
 
 
 def _materialize_tables_view(lake: Path, out: Path) -> Path:
