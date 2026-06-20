@@ -415,6 +415,11 @@ class Registrar:
                     metadata_content, table_id
                 )
                 logger.info(response.message)
+                # On insert failure, __insert_metadata returns a Response
+                # with data=None; surface the underlying error instead of
+                # crashing here on a misleading NoneType subscript.
+                if response.status != ResponseStatus.SUCCESS or response.data is None:
+                    return response
                 data.extend(response.data["metadata_ids"])
 
             return Response(
@@ -483,9 +488,17 @@ class Registrar:
                     "payload": metadata_content.strip(),
                 }
 
+                # Free-text metadata routinely contains apostrophes (e.g.
+                # "organization's data"). json.dumps does NOT escape single
+                # quotes, so they would close the SQL string literal and
+                # crash the parser. Mirror the `'` -> `''` escape used
+                # elsewhere in this file (see add_tables, line ~248).
+                safe_table_id = str(table_id).replace("'", "''")
+                safe_payload = json.dumps(payload).replace("'", "''")
+
                 metadata_id = connection.sql(
                     f"""INSERT INTO table_contexts (table_id, context)
-                    VALUES ('{table_id}', '{json.dumps(payload)}')
+                    VALUES ('{safe_table_id}', '{safe_payload}')
                     RETURNING id"""
                 ).fetchone()[0]
 

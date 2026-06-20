@@ -168,5 +168,17 @@ pneuma-bench-all:  ## Run pneuma-bench over every PNEUMA_BENCHMARK_DATASETS, the
 	done
 	$(PYTHON) -m scripts.benchmark.compare_v2 --source both
 
-pneuma-delete-benchdata:  ## Drop pneumaBenchdata/{lakes,indexes,results}/.
-	rm -rf pneumaBenchdata
+pneuma-delete-benchdata:  ## Drop pneumaBenchdata/{lakes,indexes,results}/ via the container (root-owned bind-mount).
+	@# The container runs as root, so the bind-mounted pneumaBenchdata/ is
+	@# root-owned on the host and a host-side `rm` would fail with EPERM.
+	@# Route the rm through the container — exec if it's already up, else
+	@# `run --rm` to spin one up just for the cleanup. Don't try to remove
+	@# the bind-mount root itself (`/app/pneumaBenchdata`); only its
+	@# subdirectories, which is what the docstring promises anyway.
+	@if $(COMPOSE) ps --services --filter status=running 2>/dev/null | grep -qx blend; then \
+	  echo "  → using running blend container"; \
+	  $(COMPOSE) exec -T blend rm -rf pneumaBenchdata/lakes pneumaBenchdata/indexes pneumaBenchdata/results; \
+	else \
+	  echo "  → blend container not running, using one-shot run --rm"; \
+	  $(COMPOSE) run --rm -T blend rm -rf pneumaBenchdata/lakes pneumaBenchdata/indexes pneumaBenchdata/results; \
+	fi
