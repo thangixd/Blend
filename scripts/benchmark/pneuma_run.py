@@ -49,6 +49,7 @@ from scripts.benchmark.run import (
     SummaryRow,
     aggregate_summary,
     load_manifest,
+    seed_all,
     write_per_query_jsonl,
     write_summary_csv,
 )
@@ -215,8 +216,13 @@ def _evaluate(
             "callers that mock ``_evaluate`` don't reach this branch."
         )
     embedder = embedder_factory()
+    # ``_build_sentence_transformer`` already pins the model to the right
+    # device (cuda if available else cpu, see ``pneuma_build.py``); don't
+    # force ``device="cuda"`` here or the bench cannot run on a CPU-only
+    # machine (smoke / CI).  Mirrors Blend's ``_LocalEmbedder.encode``
+    # which omits the device kwarg for the same reason.
     question_embedding = np.asarray(
-        embedder.encode([query], device="cuda")[0], dtype=np.float32
+        embedder.encode([query])[0], dtype=np.float32
     ).tolist()
 
     query_tokens = bm25s.tokenize(query, stemmer=stemmer, show_progress=False)
@@ -471,6 +477,14 @@ def run_pneuma_benchmark(
 
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
+
+    # D17 parity with Blend: seed every RNG (python random, numpy, torch,
+    # transformers) before the retrieval loop starts.  Mirrors
+    # ``scripts.benchmark.run.run_benchmark`` which calls ``seed_all(42)``
+    # at the same lifecycle point — without this, two PNEUMA-side runs
+    # against the same index can drift on torch-init paths the embedder
+    # touches lazily.
+    seed_all(42)
 
     bx_jsonl = Path(lake_dir) / "_bx_questions.jsonl"
     manifest = load_manifest(Path(lake_dir))

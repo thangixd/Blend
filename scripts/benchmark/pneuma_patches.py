@@ -63,6 +63,15 @@ VLLM_MODEL = "Qwen2.5-7B-Instruct"
 VLLM_API_KEY = "dummy"  # vLLM ignores the key but the OpenAI SDK requires one.
 BGE_TOKENIZER_NAME = "BAAI/bge-base-en-v1.5"
 
+# LLM tokenizer + context window — used to truncate user content before
+# sending so PNEUMA-side rerank/summarize calls can't exceed the served
+# Qwen2.5-7B context.  Matches Blend's NLSeeker behaviour at
+# ``src/NLSeeker/llm.py:_OpenAILLM._truncate_prompt`` and prevents the
+# 400 ``maximum context length`` error when a single retrieved chunk
+# (row_sample / context) renders to >32k Qwen tokens.
+LLM_TOKENIZER_NAME = "Qwen/Qwen2.5-7B-Instruct"
+LLM_MAX_INPUT_TOKENS = 32768
+
 # The vendored PNEUMA tree lives at ``<repo>/pneuma/`` and is not installed
 # as a regular package, so we splice it onto sys.path on first import.  Done
 # at module import time (before apply_patches runs) so callers can
@@ -119,6 +128,104 @@ class _BgeTiktokenShim:
 
     def encode(self, text: str) -> list[int]:
         return self._tok.encode(text, add_special_tokens=False)
+
+
+# ---- LLM-side prompt truncation ----------------------------------------
+
+# Cache the AutoTokenizer used to bound the request size; the transformers
+# load is ~30 MB / a few seconds, and `apply_chat_template` is called on
+# every rerank candidate, so we don't want to reload per-call.
+_LLM_TOKENIZER_BOX: dict[str, Any] = {}
+
+
+def _get_llm_tokenizer() -> Any:
+    """Lazy-load and cache the LLM tokenizer.
+
+    Caches both the successful load and any load failure (under
+    ``"err"``) so a missing HF network in offline CI doesn't pay the
+    AutoTokenizer.from_pretrained() cost on every call.
+    """
+    if "tok" in _LLM_TOKENIZER_BOX:
+        return _LLM_TOKENIZER_BOX["tok"]
+    if "err" in _LLM_TOKENIZER_BOX:
+        return None
+    try:
+        tok = AutoTokenizer.from_pretrained(LLM_TOKENIZER_NAME)
+    except Exception as exc:  # network down, missing creds, …
+        _LLM_TOKENIZER_BOX["err"] = exc
+        return None
+    _LLM_TOKENIZER_BOX["tok"] = tok
+    return tok
+
+
+def _render_chat_len(tok: Any, content: str) -> int:
+    """Return the token count of a one-message ``[user: <content>]`` chat
+    after Qwen's chat template renders it (the shape vLLM actually sees).
+    Mirrors ``src/NLSeeker/llm.py:_OpenAILLM._truncate_prompt._render_len``.
+    """
+    try:
+        ids = tok.apply_chat_template(
+            [{"role": "user", "content": content}],
+            tokenize=True,
+            add_generation_prompt=True,
+            return_dict=False,
+        )
+        if hasattr(ids, "keys") and "input_ids" in ids:
+            ids = ids["input_ids"]
+        return len(ids)
+    except Exception:
+        # Fallback: assume ~16-token chat template overhead.
+        return len(tok.tokenize(content)) + 16
+
+
+def _truncate_user_message(content: str, max_new_tokens: int) -> str:
+    """Shave ``content`` so the rendered chat fits the served context.
+
+    Symmetric port of ``_OpenAILLM._truncate_prompt`` — only the user
+    message is shortened; the chat-template overhead and ``max_new_tokens``
+    are reserved.  Returns ``content`` unchanged when it already fits, or
+    the tokenizer cannot be loaded.
+    """
+    try:
+        tok = _get_llm_tokenizer()
+    except Exception:
+        return content
+    if tok is None:
+        return content
+
+    target_total = LLM_MAX_INPUT_TOKENS - max_new_tokens - 8
+    if target_total <= 0:
+        return content
+
+    if _render_chat_len(tok, content) <= target_total:
+        return content
+
+    # Empty-user baseline so we know the chat template's fixed overhead.
+    try:
+        base_obj = tok.apply_chat_template(
+            [{"role": "user", "content": ""}],
+            tokenize=True,
+            add_generation_prompt=True,
+            return_dict=False,
+        )
+        if hasattr(base_obj, "keys") and "input_ids" in base_obj:
+            base_obj = base_obj["input_ids"]
+        base_len = len(base_obj)
+    except Exception:
+        base_len = 16
+    tokens = tok.tokenize(content)
+    budget = max(1, target_total - base_len)
+    truncated = tok.convert_tokens_to_string(tokens[:budget])
+
+    # Verification loop: re-render and shave 64 tokens at a time if the
+    # round-trip inflated the count.  Bounded so a pathological tokenizer
+    # cannot loop forever.
+    for _ in range(8):
+        if _render_chat_len(tok, truncated) <= target_total:
+            return truncated
+        budget = max(1, budget - 64)
+        truncated = tok.convert_tokens_to_string(tokens[:budget])
+    return truncated
 
 
 # ---- Patch implementations ---------------------------------------------
@@ -207,6 +314,15 @@ def _patch_prompt_openai_llm(*, llm_endpoint_url: str, llm_model_id: str) -> Non
         # (0.0) and ``seed`` (42) — bench determinism trumps caller intent.
         client = _get_client()
         for conv in conversations:
+            # Symmetric port of Blend's NLSeeker truncation (see
+            # ``src/NLSeeker/llm.py:_OpenAILLM._truncate_prompt``): bound
+            # the user content so PNEUMA's summarizer/judge prompts cannot
+            # exceed the served Qwen2.5-7B context window.
+            for msg in conv:
+                if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                    msg["content"] = _truncate_user_message(
+                        msg["content"], max_new_tokens
+                    )
             # ``elapsed_ms`` accumulates total wall-clock from first attempt to
             # final success/failure, matching what the bench is trying to
             # measure (real time the call cost, retries included).
@@ -323,6 +439,16 @@ def _patch_prompt_pipeline(*, llm_endpoint_url: str, llm_model_id: str) -> None:
         # ``src/NLSeeker/llm.py:_OpenAILLM.generate._one``).
         client = _get_client()
         for conv in conversations:
+            # Single-shot rerank prompts are user-only single-turn; truncate
+            # the user content so the rendered chat fits the served context.
+            # Symmetric with ``src/NLSeeker/llm.py:_OpenAILLM._truncate_prompt``;
+            # without this, a >32k-token row_sample/context renders straight
+            # into vLLM and triggers ``maximum context length`` 400 errors.
+            for msg in conv:
+                if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                    msg["content"] = _truncate_user_message(
+                        msg["content"], max_new_tokens
+                    )
             t0 = time.monotonic()
             for attempt in range(5):
                 try:
