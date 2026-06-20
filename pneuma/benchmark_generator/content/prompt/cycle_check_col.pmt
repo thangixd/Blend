@@ -1,0 +1,10 @@
+You are given a table and some questions on it 
+Instructions:
+1)Translate each question to a SQL
+2)Double quote all column names in a SQL by examples below.
+3)Do not use "WITHIN GROUP", "OFFSET", or "FETCH" in a SQL
+4)Each line of the output should be in the format:
+SQL_START_{No.} {SQL} SQL_SEP_{No.}
+
+Examples:
+select max("quantity") from sale where "year" = 2022 and "category"="computer"

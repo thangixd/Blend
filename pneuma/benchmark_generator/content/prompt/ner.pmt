@@ -1,0 +1,8 @@
+You are given the input text : ` {INPUT_TEXT} `
+Follow the instructions:
+1) Do name enity recognition (NER) on the input text and output in the format: 
+    Text_{No.}_NER_BEGIN
+    {entity No.} || {entity name} || {entity type}
+    Text_{No.}_NER_END
+2) {entity type} can be Person, Orgnization, Location, Date, Facility, etc.
+3) Output the NER result directly without explanation

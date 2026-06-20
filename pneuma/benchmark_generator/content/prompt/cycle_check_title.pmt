@@ -1,0 +1,5 @@
+You are given a table and some questions on it.
+Instructions:
+1)Answer each question with `Yes` or `No`. 
+2)Each line of output must be in the format:
+{Question No.}. Answer: {Answer}

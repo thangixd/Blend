@@ -1,0 +1,12 @@
+You are given a table and some questions to paraphrase.
+{Table_Data}
+
+Questions to paraphrase:
+{Questions}
+
+Instructions:
+Output in the format:
+Quest_{Question No.}_BEGIN 
+Explanation: {Explanation}
+Paraphrased_Begin_{Question No.}: {paraphrased question} Paraphrased_End_{Question No.}
+Quest_{Question No.}_END

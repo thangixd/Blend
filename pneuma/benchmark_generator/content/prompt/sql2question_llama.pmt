@@ -1,0 +1,7 @@
+You are given a table and SQL statments from it. 
+Instructions:
+1) Translate each SQL to natural language question
+2) Paraphrase each question using interrogative pronoun / word (what, when, which, etc.)
+3) Each line of output must be in the format:
+{Question No}. Translated_Begin: {Translated Question}
+{Question No}. Paraphrased_Begin: {Paraphrased Question}

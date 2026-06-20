@@ -1,0 +1,14 @@
+openai
+tiktoken
+pyarrow
+mysql-connector-python
+SQLAlchemy
+transformers
+pandas
+langchain_community
+sqlglot
+wheel
+flash_attn
+sentence_transformers
+xformers
+pymysql

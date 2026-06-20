@@ -1,0 +1,14 @@
+You are given a table and SQL statments from it. 
+Instructions:
+1) Translate each SQL to natural language question. If there is `where context`, use it for generation.
+2) Paraphrase each question using interrogative pronoun / word
+3) Each line of output must be in the format:
+{SQL No}. Translated_Begin: {Translated Question}
+{SQL No}. Paraphrased_Begin: {Paraphrased Question}
+
+Examples
+SQLs:
+1. select product, price order by price desc limit 3
+Outputs:
+1. Translated_Begin: Which three products have the highest prices?
+1. Paraphrased_Begin: What are top three expensive product?
