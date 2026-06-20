@@ -6,11 +6,6 @@ services:
     network_mode: host
     working_dir: /app
 
-    # On lyra: gpu 0 is held by vLLM-Qwen (~37 GB) and gpu 4 by vLLM-bge
-    # (~6.5 GB); gpus 1, 2, 3, 5, 6, 7 sit idle. The bench container needs
-    # one of those for the local sentence-transformers embedder. We expose
-    # all GPUs to the container and pin the embedder to gpu 1 via
-    # CUDA_VISIBLE_DEVICES below — adjust there if the layout changes.
     deploy:
       resources:
         reservations:

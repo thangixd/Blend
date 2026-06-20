@@ -416,7 +416,9 @@ def llm_rerank(
     if not candidates:
         return []
     prompts = [_rerank_prompt_for(c.doc_id, c.text, query) for c in candidates]
-    answers = llm.generate(prompts, max_new_tokens=2, concurrency=concurrency)
+    from scripts.benchmark._judge_timer import JUDGE_TIMER
+    with JUDGE_TIMER.judging():
+        answers = llm.generate(prompts, max_new_tokens=2, concurrency=concurrency)
     judged = [(cand, _is_yes(ans)) for cand, ans in zip(candidates, answers)]
     relevant = [pair for pair in judged if pair[1]]
     others = [pair for pair in judged if not pair[1]]

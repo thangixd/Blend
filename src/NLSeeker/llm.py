@@ -1,6 +1,7 @@
 import gc
 import logging
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 import numpy as np
@@ -327,11 +328,24 @@ class _OpenAILLM:
                 "max_tokens": max_new_tokens,
                 "temperature": 0.0,
             }
-            # D16: send seed=42 unless we're talking to Ollama (which does not honour it).
-            # vLLM honours seed= over OpenAI-compat; OpenAI-proper does too.
             if not _is_ollama_endpoint(self.base_url):
                 kwargs["seed"] = 42
-            resp = self._client.chat.completions.create(**kwargs)
+            # JUDGE_TIMER instrumentation: time only calls made inside a
+            # JUDGE_TIMER.judging() context (i.e. the rerank judge path).
+            # Non-judge generate() calls (summarizer, etc.) bypass this.
+            from scripts.benchmark._judge_timer import JUDGE_TIMER
+            if JUDGE_TIMER.in_judge:
+                t0 = time.monotonic()
+                resp = self._client.chat.completions.create(**kwargs)
+                elapsed_ms = (time.monotonic() - t0) * 1000.0
+                usage = getattr(resp, "usage", None)
+                tokens_in = getattr(usage, "prompt_tokens", 0) or 0
+                tokens_out = getattr(usage, "completion_tokens", 0) or 0
+                JUDGE_TIMER.record(
+                    elapsed_ms=elapsed_ms, tokens_in=tokens_in, tokens_out=tokens_out
+                )
+            else:
+                resp = self._client.chat.completions.create(**kwargs)
             return (resp.choices[0].message.content or "").strip()
 
         if concurrency == 1:

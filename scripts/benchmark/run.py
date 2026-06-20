@@ -15,6 +15,7 @@ from typing import Iterable, Sequence
 
 from tqdm import tqdm
 
+from scripts.benchmark._pneuma_compat_writer import write_pneuma_compat_jsonl
 from scripts.benchmark.metrics import latency_stats
 from scripts.benchmark.parity import _overrides_from_config
 
@@ -166,6 +167,11 @@ class PerQueryRecord:
     rr: float
     latency_ms: float
     vector_ms: float | None = None
+    # Judge timing — populated when rerank_mode=="on", zeros when "off".
+    judge_ms: float = 0.0
+    judge_calls: int = 0
+    judge_tokens_in: int = 0
+    judge_tokens_out: int = 0
 
 
 @dataclass(frozen=True)
@@ -185,6 +191,10 @@ class SummaryRow:
     vector_ms_mean: float = 0.0    # ms, 2 decimals
     vector_ms_p50: float = 0.0     # ms, 2 decimals
     vector_ms_p95: float = 0.0     # ms, 2 decimals
+    judge_ms_mean: float = 0.0
+    judge_ms_p50: float = 0.0
+    judge_ms_p95: float = 0.0
+    judge_calls_mean: float = 0.0
     rerank_mode: str = "on"        # default preserves single-mode legacy runs
 
 
@@ -200,6 +210,10 @@ def write_per_query_jsonl(path: Path, rows: Iterable[PerQueryRecord]) -> None:
                 "hit": r.hit, "recall": r.recall, "rr": r.rr,
                 "latency_ms": r.latency_ms,
                 "vector_ms": r.vector_ms,
+                "judge_ms": r.judge_ms,
+                "judge_calls": r.judge_calls,
+                "judge_tokens_in": r.judge_tokens_in,
+                "judge_tokens_out": r.judge_tokens_out,
             }
             f.write(json.dumps(obj) + "\n")
 
@@ -212,6 +226,8 @@ def write_summary_csv(path: Path, rows: Iterable[SummaryRow]) -> None:
                     "n_questions", "hit_rate", "recall_at_k", "mrr",
                     "latency_ms_mean", "latency_ms_p50", "latency_ms_p95",
                     "vector_ms_mean", "vector_ms_p50", "vector_ms_p95",
+                    "judge_ms_mean", "judge_ms_p50", "judge_ms_p95",
+                    "judge_calls_mean",
                     "rerank_mode"])
         for r in rows:
             w.writerow([
@@ -220,23 +236,11 @@ def write_summary_csv(path: Path, rows: Iterable[SummaryRow]) -> None:
                 f"{r.recall_at_k:.4f}", f"{r.mrr:.4f}",
                 f"{r.latency_ms_mean:.1f}", f"{r.latency_ms_p50:.1f}", f"{r.latency_ms_p95:.1f}",
                 f"{r.vector_ms_mean:.2f}", f"{r.vector_ms_p50:.2f}", f"{r.vector_ms_p95:.2f}",
+                r.judge_ms_mean, r.judge_ms_p50, r.judge_ms_p95,
+                r.judge_calls_mean,
                 r.rerank_mode,
             ])
 
-
-def write_pneuma_compat_jsonl(path: Path, rows: Iterable[SummaryRow]) -> None:
-    """One line per (dataset, family, k, rerank_mode) in PNEUMA's hybrid-...jsonl shape."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as f:
-        for r in rows:
-            n_hits = round(r.hit_rate * r.n_questions / 100)
-            obj = {
-                "dataset": r.dataset, "benchmark_name": r.family,
-                "k": r.k, "n": r.n, "alpha": r.alpha,
-                "hitrate": r.hit_rate, "sum": n_hits,
-                "rerank_mode": r.rerank_mode,
-            }
-            f.write(json.dumps(obj) + "\n")
 
 
 def aggregate_summary(
@@ -255,6 +259,8 @@ def aggregate_summary(
         lat_mean, lat_p50, lat_p95 = latency_stats([r.latency_ms for r in group])
         vec_samples = [r.vector_ms for r in group if r.vector_ms is not None]
         v_mean, v_p50, v_p95 = latency_stats(vec_samples)
+        j_mean, j_p50, j_p95 = latency_stats([r.judge_ms for r in group])
+        judge_calls_mean = sum(r.judge_calls for r in group) / n_q
         out.append(SummaryRow(
             dataset=dataset, family=family, k=k, n=n, alpha=alpha,
             n_questions=n_q,
@@ -267,6 +273,10 @@ def aggregate_summary(
             vector_ms_mean=round(v_mean, 2),
             vector_ms_p50=round(v_p50, 2),
             vector_ms_p95=round(v_p95, 2),
+            judge_ms_mean=round(j_mean, 2),
+            judge_ms_p50=round(j_p50, 2),
+            judge_ms_p95=round(j_p95, 2),
+            judge_calls_mean=round(judge_calls_mean, 2),
             rerank_mode=rerank_mode,
         ))
     return out
@@ -369,7 +379,13 @@ def _build_run_meta(*, dataset, endpoints, gpu, n_questions,
         "embed_endpoint": embed_endpoint,
         "build_workers": 1,
         "value_index_built": False,
-        "vector_index": "brute_force_exact",
+        # Renamed ``vector_index`` → ``vector_index_kind`` for parity with
+        # the PNEUMA bench's ``run_meta.json``: both sides now expose the
+        # same field name so ``compare_v2`` can pivot panels by it without
+        # special-casing.  Value space:
+        #   ``brute_force_exact``    — Blend NLSeeker (this side)
+        #   ``chromadb_hnsw_M48``    — PNEUMA bench
+        "vector_index_kind": "brute_force_exact",
         "context_source": "contexts_<ds>_merged.jsonl",
         "context_blocking": "one-merged-record-per-chunk",
         "judge_model_id": judge_model_id,
@@ -439,6 +455,7 @@ def _run_family(args: dict) -> dict:
     from src.Operators.Seekers.NLSeeker import NLSeeker as PlanNLSeeker
     from src.Plan import Plan
 
+    from scripts.benchmark._judge_timer import JUDGE_TIMER
     from scripts.benchmark.metrics import hit_at_k, recall_at_k, reciprocal_rank
 
     reset_engine_cache()
@@ -499,9 +516,11 @@ def _run_family(args: dict) -> dict:
                 )
                 plan = Plan()
                 plan.add("nl", nl_op)
+                JUDGE_TIMER.reset()
                 t0 = time.perf_counter()
                 table_ids = plan.run()
                 latency_ms = (time.perf_counter() - t0) * 1000.0
+                judge_metrics = JUDGE_TIMER.read()
                 metrics = nl_op._last_metrics or {}
                 vector_ms = metrics.get("vector_ms")
 
@@ -541,6 +560,10 @@ def _run_family(args: dict) -> dict:
                     rr=reciprocal_rank(retrieved_pneuma, answer_set),
                     latency_ms=latency_ms,
                     vector_ms=vector_ms,
+                    judge_ms=judge_metrics["judge_ms"],
+                    judge_calls=judge_metrics["judge_calls"],
+                    judge_tokens_in=judge_metrics["judge_tokens_in"],
+                    judge_tokens_out=judge_metrics["judge_tokens_out"],
                 ))
         n_done = bar.n + 1  # this question is finishing
         bar.set_postfix_str(

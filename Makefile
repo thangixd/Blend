@@ -6,7 +6,8 @@ COMPOSE ?= docker compose
         benchmark-prepare benchmark-index benchmark benchmark-clean \
         benchmark-all benchmark-compare benchmark-clean-all \
         benchmark-test benchmark-test-vllm \
-        build up down shell bench logs
+        build up down shell bench logs \
+        pneuma-bench pneuma-bench-all pneuma-delete-benchdata
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -133,3 +134,35 @@ bench:  ## Run `make benchmark-all` inside the container (results land in benchm
 
 logs:  ## Tail the blend container's logs.
 	$(COMPOSE) logs -f blend
+
+# ------------------------------------------------------------------
+PNEUMA_BENCHMARK_DATASETS ?= adventure_works chembl public_bi chicago_open fetaqa
+PNEUMA_BENCH_PY = $(PYTHON) -m scripts.benchmark.pneuma_cli
+
+# Override to reproduce ablation figures:
+#   make pneuma-bench DATASET=adventure_works PNEUMA_ALPHA=0.7 PNEUMA_N=15
+PNEUMA_ALPHA ?= 0.5
+PNEUMA_N     ?= 5
+
+pneuma-bench:  ## prepare + build + run PNEUMA against $(DATASET); writes pneumaBenchdata/results/.
+	PYTHONHASHSEED=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 $(PNEUMA_BENCH_PY) all \
+	  --dataset $(DATASET) \
+	  --k-values $(BENCHMARK_K_VALUES) \
+	  --rerank-modes $(BENCHMARK_RERANK_MODES) \
+	  --families $(BENCHMARK_FAMILIES) \
+	  --n $(PNEUMA_N) \
+	  --alpha $(PNEUMA_ALPHA)
+
+pneuma-bench-all:  ## Run pneuma-bench over every PNEUMA_BENCHMARK_DATASETS, then 3-way compare.
+	@set -e; \
+	for ds in $(PNEUMA_BENCHMARK_DATASETS); do \
+	  echo ""; \
+	  echo "============================================================"; \
+	  echo "  pneuma-bench-all: starting $$ds"; \
+	  echo "============================================================"; \
+	  $(MAKE) pneuma-bench DATASET=$$ds; \
+	done
+	$(PYTHON) -m scripts.benchmark.compare_v2 --source both
+
+pneuma-delete-benchdata:  ## Drop pneumaBenchdata/{lakes,indexes,results}/.
+	rm -rf pneumaBenchdata

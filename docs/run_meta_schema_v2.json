@@ -41,7 +41,7 @@
       "required": [
         "mode", "gpu_count", "inference_engine",
         "judge_thread_concurrency", "family_parallelism",
-        "build_workers", "value_index_built", "vector_index", "seeds"
+        "build_workers", "value_index_built", "vector_index_kind", "seeds"
       ],
       "properties": {
         "mode": { "const": "benchmark_sequential" },
@@ -56,7 +56,7 @@
         "embed_endpoint": { "type": "string" },
         "build_workers": { "type": "integer" },
         "value_index_built": { "type": "boolean" },
-        "vector_index": { "type": "string" },
+        "vector_index_kind": { "type": "string" },
         "embedding_matrix_dtype": { "type": "string" },
         "embedding_matrix_shape": {
           "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2

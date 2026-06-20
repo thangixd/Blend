@@ -8,6 +8,7 @@ logs/
 freqs_dict.pkl
 freqs_dict.csv
 tests
+pneuma/experiments
 
 # NLSeeker artifacts
 nl-out/
