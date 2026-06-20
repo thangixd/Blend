@@ -147,10 +147,10 @@ def _open_collection(index_dir: Path):
 
 
 def _open_retriever(index_dir: Path):
-    """Load the BM25 retriever from disk."""
     import bm25s  # type: ignore[import-untyped]
 
-    fulltext_path = index_dir / "indexes" / "fulltext"
+    dataset = index_dir.name
+    fulltext_path = index_dir / "indexes" / "fulltext" / f"pneuma_{dataset}"
     return bm25s.BM25.load(str(fulltext_path), load_corpus=True)
 
 
