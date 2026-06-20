@@ -8,7 +8,10 @@ logs/
 freqs_dict.pkl
 freqs_dict.csv
 tests
-pneuma/experiments
+# pneuma/experiments is vendored upstream and required at runtime by
+# scripts.benchmark.pneuma_run (imports pneuma_retriever.hybrid_retriever).
+# Keep tracked so fresh clones (e.g. lyra) and the docker image's bind mount
+# both have it.
 
 # NLSeeker artifacts
 nl-out/

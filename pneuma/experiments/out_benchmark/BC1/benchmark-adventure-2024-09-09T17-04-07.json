@@ -1,0 +1,651 @@
+{
+    "dataset": "adventure",
+    "timestamp": "2024-09-09T17-04-07",
+    "results": {
+        "read_tables": {
+            "file_count": 88,
+            "time": 22.1686749458313
+        },
+        "summarize": {
+            "table_count": 88,
+            "time": 290.96884965896606
+        }
+    },
+    "responses": {
+        "read_tables": {
+            "status": "SUCCESS",
+            "message": "88 files in folder ../data_src/tables/pneuma_adventure_works has been processed.",
+            "data": {
+                "file_count": 88,
+                "tables": [
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Shift_SEP_table_30.csv",
+                        "table_name": "Shift_SEP_table_30"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductDocument_SEP_table_23.csv",
+                        "table_name": "ProductDocument_SEP_table_23"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/AddressType_SEP_table_49.csv",
+                        "table_name": "AddressType_SEP_table_49"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesOrderHeader_SEP_table_6.csv",
+                        "table_name": "SalesOrderHeader_SEP_table_6"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductProductPhoto_SEP_table_67.csv",
+                        "table_name": "ProductProductPhoto_SEP_table_67"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesOrderHeaderSalesReason_SEP_table_17.csv",
+                        "table_name": "SalesOrderHeaderSalesReason_SEP_table_17"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vEmployee_SEP_table_42.csv",
+                        "table_name": "vEmployee_SEP_table_42"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SpecialOfferProduct_SEP_table_63.csv",
+                        "table_name": "SpecialOfferProduct_SEP_table_63"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/EmployeeDepartmentHistory_SEP_table_79.csv",
+                        "table_name": "EmployeeDepartmentHistory_SEP_table_79"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductInventory_SEP_table_76.csv",
+                        "table_name": "ProductInventory_SEP_table_76"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vVendorWithAddresses_SEP_table_80.csv",
+                        "table_name": "vVendorWithAddresses_SEP_table_80"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vStateProvinceCountryRegion_SEP_table_85.csv",
+                        "table_name": "vStateProvinceCountryRegion_SEP_table_85"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductListPriceHistory_SEP_table_82.csv",
+                        "table_name": "ProductListPriceHistory_SEP_table_82"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ScrapReason_SEP_table_33.csv",
+                        "table_name": "ScrapReason_SEP_table_33"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vJobCandidateEmployment_SEP_table_50.csv",
+                        "table_name": "vJobCandidateEmployment_SEP_table_50"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Illustration_SEP_table_20.csv",
+                        "table_name": "Illustration_SEP_table_20"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vProductAndDescription_SEP_table_35.csv",
+                        "table_name": "vProductAndDescription_SEP_table_35"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Address_SEP_table_45.csv",
+                        "table_name": "Address_SEP_table_45"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductReview_SEP_table_55.csv",
+                        "table_name": "ProductReview_SEP_table_55"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/EmailAddress_SEP_table_74.csv",
+                        "table_name": "EmailAddress_SEP_table_74"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vJobCandidateEducation_SEP_table_10.csv",
+                        "table_name": "vJobCandidateEducation_SEP_table_10"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vIndividualCustomer_SEP_table_72.csv",
+                        "table_name": "vIndividualCustomer_SEP_table_72"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesPerson_SEP_table_52.csv",
+                        "table_name": "SalesPerson_SEP_table_52"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Currency_SEP_table_11.csv",
+                        "table_name": "Currency_SEP_table_11"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/EmployeePayHistory_SEP_table_62.csv",
+                        "table_name": "EmployeePayHistory_SEP_table_62"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SpecialOffer_SEP_table_51.csv",
+                        "table_name": "SpecialOffer_SEP_table_51"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Location_SEP_table_86.csv",
+                        "table_name": "Location_SEP_table_86"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Person_SEP_table_61.csv",
+                        "table_name": "Person_SEP_table_61"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/TransactionHistoryArchive_SEP_table_25.csv",
+                        "table_name": "TransactionHistoryArchive_SEP_table_25"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesTerritoryHistory_SEP_table_2.csv",
+                        "table_name": "SalesTerritoryHistory_SEP_table_2"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductCostHistory_SEP_table_78.csv",
+                        "table_name": "ProductCostHistory_SEP_table_78"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/BillOfMaterials_SEP_table_64.csv",
+                        "table_name": "BillOfMaterials_SEP_table_64"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesPersonQuotaHistory_SEP_table_18.csv",
+                        "table_name": "SalesPersonQuotaHistory_SEP_table_18"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/StateProvince_SEP_table_19.csv",
+                        "table_name": "StateProvince_SEP_table_19"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Customer_SEP_table_29.csv",
+                        "table_name": "Customer_SEP_table_29"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/PurchaseOrderDetail_SEP_table_53.csv",
+                        "table_name": "PurchaseOrderDetail_SEP_table_53"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductPhoto_SEP_table_77.csv",
+                        "table_name": "ProductPhoto_SEP_table_77"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesTerritory_SEP_table_70.csv",
+                        "table_name": "SalesTerritory_SEP_table_70"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/BusinessEntityContact_SEP_table_27.csv",
+                        "table_name": "BusinessEntityContact_SEP_table_27"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/CountryRegionCurrency_SEP_table_12.csv",
+                        "table_name": "CountryRegionCurrency_SEP_table_12"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ShipMethod_SEP_table_28.csv",
+                        "table_name": "ShipMethod_SEP_table_28"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vEmployeeDepartment_SEP_table_71.csv",
+                        "table_name": "vEmployeeDepartment_SEP_table_71"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Store_SEP_table_15.csv",
+                        "table_name": "Store_SEP_table_15"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vSalesPerson_SEP_table_4.csv",
+                        "table_name": "vSalesPerson_SEP_table_4"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ContactType_SEP_table_44.csv",
+                        "table_name": "ContactType_SEP_table_44"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/UnitMeasure_SEP_table_60.csv",
+                        "table_name": "UnitMeasure_SEP_table_60"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vPersonDemographics_SEP_table_40.csv",
+                        "table_name": "vPersonDemographics_SEP_table_40"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vVendorWithContacts_SEP_table_59.csv",
+                        "table_name": "vVendorWithContacts_SEP_table_59"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/JobCandidate_SEP_table_41.csv",
+                        "table_name": "JobCandidate_SEP_table_41"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Document_SEP_table_81.csv",
+                        "table_name": "Document_SEP_table_81"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vStoreWithContacts_SEP_table_26.csv",
+                        "table_name": "vStoreWithContacts_SEP_table_26"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/PhoneNumberType_SEP_table_38.csv",
+                        "table_name": "PhoneNumberType_SEP_table_38"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/PersonCreditCard_SEP_table_31.csv",
+                        "table_name": "PersonCreditCard_SEP_table_31"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/CreditCard_SEP_table_22.csv",
+                        "table_name": "CreditCard_SEP_table_22"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vProductModelCatalogDescription_SEP_table_75.csv",
+                        "table_name": "vProductModelCatalogDescription_SEP_table_75"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vStoreWithAddresses_SEP_table_58.csv",
+                        "table_name": "vStoreWithAddresses_SEP_table_58"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/WorkOrderRouting_SEP_table_32.csv",
+                        "table_name": "WorkOrderRouting_SEP_table_32"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Vendor_SEP_table_56.csv",
+                        "table_name": "Vendor_SEP_table_56"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Culture_SEP_table_87.csv",
+                        "table_name": "Culture_SEP_table_87"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vJobCandidate_SEP_table_16.csv",
+                        "table_name": "vJobCandidate_SEP_table_16"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductModelProductDescriptionCulture_SEP_table_14.csv",
+                        "table_name": "ProductModelProductDescriptionCulture_SEP_table_14"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vSalesPersonSalesByFiscalYears_SEP_table_57.csv",
+                        "table_name": "vSalesPersonSalesByFiscalYears_SEP_table_57"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductModelIllustration_SEP_table_37.csv",
+                        "table_name": "ProductModelIllustration_SEP_table_37"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/PersonPhone_SEP_table_66.csv",
+                        "table_name": "PersonPhone_SEP_table_66"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Department_SEP_table_47.csv",
+                        "table_name": "Department_SEP_table_47"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vEmployeeDepartmentHistory_SEP_table_5.csv",
+                        "table_name": "vEmployeeDepartmentHistory_SEP_table_5"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductDescription_SEP_table_36.csv",
+                        "table_name": "ProductDescription_SEP_table_36"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/CountryRegion_SEP_table_1.csv",
+                        "table_name": "CountryRegion_SEP_table_1"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Password_SEP_table_13.csv",
+                        "table_name": "Password_SEP_table_13"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/TransactionHistory_SEP_table_9.csv",
+                        "table_name": "TransactionHistory_SEP_table_9"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductVendor_SEP_table_46.csv",
+                        "table_name": "ProductVendor_SEP_table_46"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vAdditionalContactInfo_SEP_table_3.csv",
+                        "table_name": "vAdditionalContactInfo_SEP_table_3"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/CurrencyRate_SEP_table_7.csv",
+                        "table_name": "CurrencyRate_SEP_table_7"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Employee_SEP_table_21.csv",
+                        "table_name": "Employee_SEP_table_21"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductModel_SEP_table_68.csv",
+                        "table_name": "ProductModel_SEP_table_68"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesTaxRate_SEP_table_73.csv",
+                        "table_name": "SalesTaxRate_SEP_table_73"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ShoppingCartItem_SEP_table_83.csv",
+                        "table_name": "ShoppingCartItem_SEP_table_83"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/PurchaseOrderHeader_SEP_table_88.csv",
+                        "table_name": "PurchaseOrderHeader_SEP_table_88"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductCategory_SEP_table_39.csv",
+                        "table_name": "ProductCategory_SEP_table_39"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesReason_SEP_table_8.csv",
+                        "table_name": "SalesReason_SEP_table_8"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/BusinessEntity_SEP_table_84.csv",
+                        "table_name": "BusinessEntity_SEP_table_84"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/Product_SEP_table_34.csv",
+                        "table_name": "Product_SEP_table_34"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vStoreWithDemographics_SEP_table_24.csv",
+                        "table_name": "vStoreWithDemographics_SEP_table_24"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/SalesOrderDetail_SEP_table_48.csv",
+                        "table_name": "SalesOrderDetail_SEP_table_48"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/BusinessEntityAddress_SEP_table_69.csv",
+                        "table_name": "BusinessEntityAddress_SEP_table_69"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/vProductModelInstructions_SEP_table_43.csv",
+                        "table_name": "vProductModelInstructions_SEP_table_43"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/ProductSubcategory_SEP_table_65.csv",
+                        "table_name": "ProductSubcategory_SEP_table_65"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_adventure_works/WorkOrder_SEP_table_54.csv",
+                        "table_name": "WorkOrder_SEP_table_54"
+                    }
+                ]
+            }
+        },
+        "summarize": {
+            "status": "SUCCESS",
+            "message": "Total of 176 summaries has been added with IDs: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176.\n",
+            "data": {
+                "table_ids": [
+                    "../data_src/tables/pneuma_adventure_works/Shift_SEP_table_30.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductDocument_SEP_table_23.csv",
+                    "../data_src/tables/pneuma_adventure_works/AddressType_SEP_table_49.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesOrderHeader_SEP_table_6.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductProductPhoto_SEP_table_67.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesOrderHeaderSalesReason_SEP_table_17.csv",
+                    "../data_src/tables/pneuma_adventure_works/vEmployee_SEP_table_42.csv",
+                    "../data_src/tables/pneuma_adventure_works/SpecialOfferProduct_SEP_table_63.csv",
+                    "../data_src/tables/pneuma_adventure_works/EmployeeDepartmentHistory_SEP_table_79.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductInventory_SEP_table_76.csv",
+                    "../data_src/tables/pneuma_adventure_works/vVendorWithAddresses_SEP_table_80.csv",
+                    "../data_src/tables/pneuma_adventure_works/vStateProvinceCountryRegion_SEP_table_85.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductListPriceHistory_SEP_table_82.csv",
+                    "../data_src/tables/pneuma_adventure_works/ScrapReason_SEP_table_33.csv",
+                    "../data_src/tables/pneuma_adventure_works/vJobCandidateEmployment_SEP_table_50.csv",
+                    "../data_src/tables/pneuma_adventure_works/Illustration_SEP_table_20.csv",
+                    "../data_src/tables/pneuma_adventure_works/vProductAndDescription_SEP_table_35.csv",
+                    "../data_src/tables/pneuma_adventure_works/Address_SEP_table_45.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductReview_SEP_table_55.csv",
+                    "../data_src/tables/pneuma_adventure_works/EmailAddress_SEP_table_74.csv",
+                    "../data_src/tables/pneuma_adventure_works/vJobCandidateEducation_SEP_table_10.csv",
+                    "../data_src/tables/pneuma_adventure_works/vIndividualCustomer_SEP_table_72.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesPerson_SEP_table_52.csv",
+                    "../data_src/tables/pneuma_adventure_works/Currency_SEP_table_11.csv",
+                    "../data_src/tables/pneuma_adventure_works/EmployeePayHistory_SEP_table_62.csv",
+                    "../data_src/tables/pneuma_adventure_works/SpecialOffer_SEP_table_51.csv",
+                    "../data_src/tables/pneuma_adventure_works/Location_SEP_table_86.csv",
+                    "../data_src/tables/pneuma_adventure_works/Person_SEP_table_61.csv",
+                    "../data_src/tables/pneuma_adventure_works/TransactionHistoryArchive_SEP_table_25.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesTerritoryHistory_SEP_table_2.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductCostHistory_SEP_table_78.csv",
+                    "../data_src/tables/pneuma_adventure_works/BillOfMaterials_SEP_table_64.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesPersonQuotaHistory_SEP_table_18.csv",
+                    "../data_src/tables/pneuma_adventure_works/StateProvince_SEP_table_19.csv",
+                    "../data_src/tables/pneuma_adventure_works/Customer_SEP_table_29.csv",
+                    "../data_src/tables/pneuma_adventure_works/PurchaseOrderDetail_SEP_table_53.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductPhoto_SEP_table_77.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesTerritory_SEP_table_70.csv",
+                    "../data_src/tables/pneuma_adventure_works/BusinessEntityContact_SEP_table_27.csv",
+                    "../data_src/tables/pneuma_adventure_works/CountryRegionCurrency_SEP_table_12.csv",
+                    "../data_src/tables/pneuma_adventure_works/ShipMethod_SEP_table_28.csv",
+                    "../data_src/tables/pneuma_adventure_works/vEmployeeDepartment_SEP_table_71.csv",
+                    "../data_src/tables/pneuma_adventure_works/Store_SEP_table_15.csv",
+                    "../data_src/tables/pneuma_adventure_works/vSalesPerson_SEP_table_4.csv",
+                    "../data_src/tables/pneuma_adventure_works/ContactType_SEP_table_44.csv",
+                    "../data_src/tables/pneuma_adventure_works/UnitMeasure_SEP_table_60.csv",
+                    "../data_src/tables/pneuma_adventure_works/vPersonDemographics_SEP_table_40.csv",
+                    "../data_src/tables/pneuma_adventure_works/vVendorWithContacts_SEP_table_59.csv",
+                    "../data_src/tables/pneuma_adventure_works/JobCandidate_SEP_table_41.csv",
+                    "../data_src/tables/pneuma_adventure_works/Document_SEP_table_81.csv",
+                    "../data_src/tables/pneuma_adventure_works/vStoreWithContacts_SEP_table_26.csv",
+                    "../data_src/tables/pneuma_adventure_works/PhoneNumberType_SEP_table_38.csv",
+                    "../data_src/tables/pneuma_adventure_works/PersonCreditCard_SEP_table_31.csv",
+                    "../data_src/tables/pneuma_adventure_works/CreditCard_SEP_table_22.csv",
+                    "../data_src/tables/pneuma_adventure_works/vProductModelCatalogDescription_SEP_table_75.csv",
+                    "../data_src/tables/pneuma_adventure_works/vStoreWithAddresses_SEP_table_58.csv",
+                    "../data_src/tables/pneuma_adventure_works/WorkOrderRouting_SEP_table_32.csv",
+                    "../data_src/tables/pneuma_adventure_works/Vendor_SEP_table_56.csv",
+                    "../data_src/tables/pneuma_adventure_works/Culture_SEP_table_87.csv",
+                    "../data_src/tables/pneuma_adventure_works/vJobCandidate_SEP_table_16.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductModelProductDescriptionCulture_SEP_table_14.csv",
+                    "../data_src/tables/pneuma_adventure_works/vSalesPersonSalesByFiscalYears_SEP_table_57.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductModelIllustration_SEP_table_37.csv",
+                    "../data_src/tables/pneuma_adventure_works/PersonPhone_SEP_table_66.csv",
+                    "../data_src/tables/pneuma_adventure_works/Department_SEP_table_47.csv",
+                    "../data_src/tables/pneuma_adventure_works/vEmployeeDepartmentHistory_SEP_table_5.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductDescription_SEP_table_36.csv",
+                    "../data_src/tables/pneuma_adventure_works/CountryRegion_SEP_table_1.csv",
+                    "../data_src/tables/pneuma_adventure_works/Password_SEP_table_13.csv",
+                    "../data_src/tables/pneuma_adventure_works/TransactionHistory_SEP_table_9.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductVendor_SEP_table_46.csv",
+                    "../data_src/tables/pneuma_adventure_works/vAdditionalContactInfo_SEP_table_3.csv",
+                    "../data_src/tables/pneuma_adventure_works/CurrencyRate_SEP_table_7.csv",
+                    "../data_src/tables/pneuma_adventure_works/Employee_SEP_table_21.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductModel_SEP_table_68.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesTaxRate_SEP_table_73.csv",
+                    "../data_src/tables/pneuma_adventure_works/ShoppingCartItem_SEP_table_83.csv",
+                    "../data_src/tables/pneuma_adventure_works/PurchaseOrderHeader_SEP_table_88.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductCategory_SEP_table_39.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesReason_SEP_table_8.csv",
+                    "../data_src/tables/pneuma_adventure_works/BusinessEntity_SEP_table_84.csv",
+                    "../data_src/tables/pneuma_adventure_works/Product_SEP_table_34.csv",
+                    "../data_src/tables/pneuma_adventure_works/vStoreWithDemographics_SEP_table_24.csv",
+                    "../data_src/tables/pneuma_adventure_works/SalesOrderDetail_SEP_table_48.csv",
+                    "../data_src/tables/pneuma_adventure_works/BusinessEntityAddress_SEP_table_69.csv",
+                    "../data_src/tables/pneuma_adventure_works/vProductModelInstructions_SEP_table_43.csv",
+                    "../data_src/tables/pneuma_adventure_works/ProductSubcategory_SEP_table_65.csv",
+                    "../data_src/tables/pneuma_adventure_works/WorkOrder_SEP_table_54.csv"
+                ],
+                "summary_ids": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19,
+                    20,
+                    21,
+                    22,
+                    23,
+                    24,
+                    25,
+                    26,
+                    27,
+                    28,
+                    29,
+                    30,
+                    31,
+                    32,
+                    33,
+                    34,
+                    35,
+                    36,
+                    37,
+                    38,
+                    39,
+                    40,
+                    41,
+                    42,
+                    43,
+                    44,
+                    45,
+                    46,
+                    47,
+                    48,
+                    49,
+                    50,
+                    51,
+                    52,
+                    53,
+                    54,
+                    55,
+                    56,
+                    57,
+                    58,
+                    59,
+                    60,
+                    61,
+                    62,
+                    63,
+                    64,
+                    65,
+                    66,
+                    67,
+                    68,
+                    69,
+                    70,
+                    71,
+                    72,
+                    73,
+                    74,
+                    75,
+                    76,
+                    77,
+                    78,
+                    79,
+                    80,
+                    81,
+                    82,
+                    83,
+                    84,
+                    85,
+                    86,
+                    87,
+                    88,
+                    89,
+                    90,
+                    91,
+                    92,
+                    93,
+                    94,
+                    95,
+                    96,
+                    97,
+                    98,
+                    99,
+                    100,
+                    101,
+                    102,
+                    103,
+                    104,
+                    105,
+                    106,
+                    107,
+                    108,
+                    109,
+                    110,
+                    111,
+                    112,
+                    113,
+                    114,
+                    115,
+                    116,
+                    117,
+                    118,
+                    119,
+                    120,
+                    121,
+                    122,
+                    123,
+                    124,
+                    125,
+                    126,
+                    127,
+                    128,
+                    129,
+                    130,
+                    131,
+                    132,
+                    133,
+                    134,
+                    135,
+                    136,
+                    137,
+                    138,
+                    139,
+                    140,
+                    141,
+                    142,
+                    143,
+                    144,
+                    145,
+                    146,
+                    147,
+                    148,
+                    149,
+                    150,
+                    151,
+                    152,
+                    153,
+                    154,
+                    155,
+                    156,
+                    157,
+                    158,
+                    159,
+                    160,
+                    161,
+                    162,
+                    163,
+                    164,
+                    165,
+                    166,
+                    167,
+                    168,
+                    169,
+                    170,
+                    171,
+                    172,
+                    173,
+                    174,
+                    175,
+                    176
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "dataset": "fetaqa",
+    "benchmark_type": "content",
+    "timestamp": "2024-10-14T14-49-39",
+    "results": {
+        "BC2_query_index": {
+            "query_count": 50,
+            "time": 19.799920320510864,
+            "query_throughput": 2.5252626874566095
+        },
+        "BC1_query_index": {
+            "query_count": 50,
+            "time": 19.8362033367157,
+            "query_throughput": 2.5206436509678647
+        },
+        "query_index": {
+            "query_count": 100,
+            "time": 39.63612365722656
+        },
+        "query_throughput": 2.522951055072908
+    },
+    "responses": {}
+}

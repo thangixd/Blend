@@ -1,0 +1,13 @@
+{
+    "dataset": "pneuma_fetaqa",
+    "timestamp": "2024-09-25T12-09-34",
+    "results": {
+        "ingestion": {
+            "file_count": 10330,
+            "time": 54.1847243309021
+        },
+        "generate_index": {
+            "time": 366.5958914756775
+        }
+    }
+}

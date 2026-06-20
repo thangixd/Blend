@@ -1,0 +1,18 @@
+{
+    "dataset": "fetaqa_625",
+    "timestamp": "2024-09-26T15-12-22",
+    "results": {
+        "BC1_query_index": {
+            "query_count": 50,
+            "time": 330.12896943092346
+        },
+        "BC2_query_index": {
+            "query_count": 50,
+            "time": 332.1165018081665
+        },
+        "query_index": {
+            "query_count": 100,
+            "time": 662.24547123909
+        }
+    }
+}

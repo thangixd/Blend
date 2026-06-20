@@ -1,0 +1,8 @@
+{
+    "dataset": "fetaqa",
+    "timestamp": "2024-10-10T03-59-04",
+    "table_count": 1250,
+    "evaluation_time": 0.02218461036682129,
+    "bc1_time": 0.014358997344970703,
+    "bc2_time": 0.007825613021850586
+}

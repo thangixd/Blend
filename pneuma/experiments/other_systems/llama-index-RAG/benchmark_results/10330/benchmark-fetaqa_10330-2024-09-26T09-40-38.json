@@ -1,0 +1,25 @@
+{
+    "dataset": "fetaqa_10330",
+    "timestamp": "2024-09-26T09-40-38",
+    "results": {
+        "ingestion": {
+            "file_count": 10330,
+            "time": 54.956421852111816
+        },
+        "generate_index": {
+            "time": 368.13595747947693
+        },
+        "BC1_query_index": {
+            "query_count": 50,
+            "time": 589.622053861618
+        },
+        "BC2_query_index": {
+            "query_count": 50,
+            "time": 623.998265504837
+        },
+        "query_index": {
+            "query_count": 100,
+            "time": 1213.620319366455
+        }
+    }
+}

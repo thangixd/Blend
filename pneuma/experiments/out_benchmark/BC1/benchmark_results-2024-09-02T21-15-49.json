@@ -1,0 +1,1003 @@
+{
+    "dataset": "public",
+    "timestamp": "2024-09-02T21-15-49",
+    "results": {
+        "read_tables": {
+            "file_count": 203,
+            "time": 12.999889135360718
+        },
+        "summarize": {
+            "table_count": 106,
+            "time": 4.00532341003418
+        },
+        "generate_index": {
+            "table_count": 106,
+            "vector_index_generation_time": 0.08037662506103516,
+            "keyword_index_generation_time": 0.06161212921142578,
+            "time": 181.7809717655182
+        },
+        "query_index": {
+            "query_count": 1000,
+            "time": 116.45647025108337,
+            "query_throughput": 8.586899447012023
+        }
+    },
+    "responses": {
+        "read_tables": {
+            "status": "SUCCESS",
+            "message": "203 files in folder ../data_src/tables/pneuma_public_bi has been processed.",
+            "data": {
+                "file_count": 203,
+                "tables": [
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Arade_1_SEP_table_73.csv",
+                        "table_name": "pneuma_public_bi\\Arade_1_SEP_table_73"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Bimbo_1_SEP_table_42.csv",
+                        "table_name": "pneuma_public_bi\\Bimbo_1_SEP_table_42"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/CMSprovider_1_SEP_table_81.csv",
+                        "table_name": "pneuma_public_bi\\CMSprovider_1_SEP_table_81"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/CMSprovider_2_SEP_table_194.csv",
+                        "table_name": "pneuma_public_bi\\CMSprovider_2_SEP_table_194"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/CommonGovernment_10_SEP_table_183.csv",
+                        "table_name": "pneuma_public_bi\\CommonGovernment_10_SEP_table_183"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Corporations_1_SEP_table_184.csv",
+                        "table_name": "pneuma_public_bi\\Corporations_1_SEP_table_184"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Eixo_1_SEP_table_139.csv",
+                        "table_name": "pneuma_public_bi\\Eixo_1_SEP_table_139"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Food_1_SEP_table_143.csv",
+                        "table_name": "pneuma_public_bi\\Food_1_SEP_table_143"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Generico_1_SEP_table_165.csv",
+                        "table_name": "pneuma_public_bi\\Generico_1_SEP_table_165"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Generico_2_SEP_table_195.csv",
+                        "table_name": "pneuma_public_bi\\Generico_2_SEP_table_195"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/HashTags_1_SEP_table_149.csv",
+                        "table_name": "pneuma_public_bi\\HashTags_1_SEP_table_149"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Hatred_1_SEP_table_187.csv",
+                        "table_name": "pneuma_public_bi\\Hatred_1_SEP_table_187"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/IGlocations1_1_SEP_table_123.csv",
+                        "table_name": "pneuma_public_bi\\IGlocations1_1_SEP_table_123"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/IGlocations2_1_SEP_table_27.csv",
+                        "table_name": "pneuma_public_bi\\IGlocations2_1_SEP_table_27"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/IGlocations2_2_SEP_table_148.csv",
+                        "table_name": "pneuma_public_bi\\IGlocations2_2_SEP_table_148"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/IUBLibrary_1_SEP_table_10.csv",
+                        "table_name": "pneuma_public_bi\\IUBLibrary_1_SEP_table_10"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Medicare1_1_SEP_table_11.csv",
+                        "table_name": "pneuma_public_bi\\Medicare1_1_SEP_table_11"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Medicare1_2_SEP_table_40.csv",
+                        "table_name": "pneuma_public_bi\\Medicare1_2_SEP_table_40"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Medicare2_1_SEP_table_95.csv",
+                        "table_name": "pneuma_public_bi\\Medicare2_1_SEP_table_95"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Medicare2_2_SEP_table_182.csv",
+                        "table_name": "pneuma_public_bi\\Medicare2_2_SEP_table_182"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Medicare3_1_SEP_table_169.csv",
+                        "table_name": "pneuma_public_bi\\Medicare3_1_SEP_table_169"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MedPayment1_1_SEP_table_179.csv",
+                        "table_name": "pneuma_public_bi\\MedPayment1_1_SEP_table_179"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MedPayment2_1_SEP_table_185.csv",
+                        "table_name": "pneuma_public_bi\\MedPayment2_1_SEP_table_185"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_10_SEP_table_21.csv",
+                        "table_name": "pneuma_public_bi\\MLB_10_SEP_table_21"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_12_SEP_table_166.csv",
+                        "table_name": "pneuma_public_bi\\MLB_12_SEP_table_166"
+                    },
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_15_SEP_table_138.csv",
+                        "table_name": "pneuma_public_bi\\MLB_15_SEP_table_138"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_17_SEP_table_68.csv",
+                        "table_name": "pneuma_public_bi\\MLB_17_SEP_table_68"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_18_SEP_table_14.csv",
+                        "table_name": "pneuma_public_bi\\MLB_18_SEP_table_14"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_19_SEP_table_31.csv",
+                        "table_name": "pneuma_public_bi\\MLB_19_SEP_table_31"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_22_SEP_table_8.csv",
+                        "table_name": "pneuma_public_bi\\MLB_22_SEP_table_8"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_23_SEP_table_20.csv",
+                        "table_name": "pneuma_public_bi\\MLB_23_SEP_table_20"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_24_SEP_table_39.csv",
+                        "table_name": "pneuma_public_bi\\MLB_24_SEP_table_39"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_25_SEP_table_63.csv",
+                        "table_name": "pneuma_public_bi\\MLB_25_SEP_table_63"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_26_SEP_table_85.csv",
+                        "table_name": "pneuma_public_bi\\MLB_26_SEP_table_85"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_2_SEP_table_157.csv",
+                        "table_name": "pneuma_public_bi\\MLB_2_SEP_table_157"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_31_SEP_table_55.csv",
+                        "table_name": "pneuma_public_bi\\MLB_31_SEP_table_55"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_38_SEP_table_199.csv",
+                        "table_name": "pneuma_public_bi\\MLB_38_SEP_table_199"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_39_SEP_table_128.csv",
+                        "table_name": "pneuma_public_bi\\MLB_39_SEP_table_128"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_40_SEP_table_180.csv",
+                        "table_name": "pneuma_public_bi\\MLB_40_SEP_table_180"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_41_SEP_table_5.csv",
+                        "table_name": "pneuma_public_bi\\MLB_41_SEP_table_5"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_45_SEP_table_111.csv",
+                        "table_name": "pneuma_public_bi\\MLB_45_SEP_table_111"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_49_SEP_table_94.csv",
+                        "table_name": "pneuma_public_bi\\MLB_49_SEP_table_94"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_52_SEP_table_91.csv",
+                        "table_name": "pneuma_public_bi\\MLB_52_SEP_table_91"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_53_SEP_table_181.csv",
+                        "table_name": "pneuma_public_bi\\MLB_53_SEP_table_181"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_57_SEP_table_51.csv",
+                        "table_name": "pneuma_public_bi\\MLB_57_SEP_table_51"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_58_SEP_table_67.csv",
+                        "table_name": "pneuma_public_bi\\MLB_58_SEP_table_67"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_5_SEP_table_99.csv",
+                        "table_name": "pneuma_public_bi\\MLB_5_SEP_table_99"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_63_SEP_table_82.csv",
+                        "table_name": "pneuma_public_bi\\MLB_63_SEP_table_82"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_65_SEP_table_122.csv",
+                        "table_name": "pneuma_public_bi\\MLB_65_SEP_table_122"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_66_SEP_table_2.csv",
+                        "table_name": "pneuma_public_bi\\MLB_66_SEP_table_2"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_67_SEP_table_43.csv",
+                        "table_name": "pneuma_public_bi\\MLB_67_SEP_table_43"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_68_SEP_table_13.csv",
+                        "table_name": "pneuma_public_bi\\MLB_68_SEP_table_13"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MLB_7_SEP_table_130.csv",
+                        "table_name": "pneuma_public_bi\\MLB_7_SEP_table_130"
+                    },
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Motos_1_SEP_table_59.csv",
+                        "table_name": "pneuma_public_bi\\Motos_1_SEP_table_59"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Motos_2_SEP_table_163.csv",
+                        "table_name": "pneuma_public_bi\\Motos_2_SEP_table_163"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/MulheresMil_1_SEP_table_142.csv",
+                        "table_name": "pneuma_public_bi\\MulheresMil_1_SEP_table_142"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/NYC_1_SEP_table_7.csv",
+                        "table_name": "pneuma_public_bi\\NYC_1_SEP_table_7"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/NYC_2_SEP_table_136.csv",
+                        "table_name": "pneuma_public_bi\\NYC_2_SEP_table_136"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/PanCreactomy1_1_SEP_table_155.csv",
+                        "table_name": "pneuma_public_bi\\PanCreactomy1_1_SEP_table_155"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/PanCreactomy2_1_SEP_table_71.csv",
+                        "table_name": "pneuma_public_bi\\PanCreactomy2_1_SEP_table_71"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/PanCreactomy2_2_SEP_table_108.csv",
+                        "table_name": "pneuma_public_bi\\PanCreactomy2_2_SEP_table_108"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Physicians_1_SEP_table_47.csv",
+                        "table_name": "pneuma_public_bi\\Physicians_1_SEP_table_47"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/RealEstate1_1_SEP_table_147.csv",
+                        "table_name": "pneuma_public_bi\\RealEstate1_1_SEP_table_147"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/RealEstate2_1_SEP_table_141.csv",
+                        "table_name": "pneuma_public_bi\\RealEstate2_1_SEP_table_141"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/RealEstate2_2_SEP_table_174.csv",
+                        "table_name": "pneuma_public_bi\\RealEstate2_2_SEP_table_174"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/RealEstate2_7_SEP_table_113.csv",
+                        "table_name": "pneuma_public_bi\\RealEstate2_7_SEP_table_113"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Redfin1_1_SEP_table_86.csv",
+                        "table_name": "pneuma_public_bi\\Redfin1_1_SEP_table_86"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Redfin1_2_SEP_table_170.csv",
+                        "table_name": "pneuma_public_bi\\Redfin1_2_SEP_table_170"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Redfin1_3_SEP_table_3.csv",
+                        "table_name": "pneuma_public_bi\\Redfin1_3_SEP_table_3"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Redfin1_4_SEP_table_103.csv",
+                        "table_name": "pneuma_public_bi\\Redfin1_4_SEP_table_103"
+                    },
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Redfin3_1_SEP_table_22.csv",
+                        "table_name": "pneuma_public_bi\\Redfin3_1_SEP_table_22"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Redfin4_1_SEP_table_69.csv",
+                        "table_name": "pneuma_public_bi\\Redfin4_1_SEP_table_69"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Rentabilidad_1_SEP_table_57.csv",
+                        "table_name": "pneuma_public_bi\\Rentabilidad_1_SEP_table_57"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Rentabilidad_2_SEP_table_35.csv",
+                        "table_name": "pneuma_public_bi\\Rentabilidad_2_SEP_table_35"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Rentabilidad_4_SEP_table_17.csv",
+                        "table_name": "pneuma_public_bi\\Rentabilidad_4_SEP_table_17"
+                    },
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Rentabilidad_7_SEP_table_146.csv",
+                        "table_name": "pneuma_public_bi\\Rentabilidad_7_SEP_table_146"
+                    },
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Romance_2_SEP_table_121.csv",
+                        "table_name": "pneuma_public_bi\\Romance_2_SEP_table_121"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/SalariesFrance_10_SEP_table_117.csv",
+                        "table_name": "pneuma_public_bi\\SalariesFrance_10_SEP_table_117"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/SalariesFrance_12_SEP_table_79.csv",
+                        "table_name": "pneuma_public_bi\\SalariesFrance_12_SEP_table_79"
+                    },
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/SalariesFrance_2_SEP_table_106.csv",
+                        "table_name": "pneuma_public_bi\\SalariesFrance_2_SEP_table_106"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/SalariesFrance_3_SEP_table_19.csv",
+                        "table_name": "pneuma_public_bi\\SalariesFrance_3_SEP_table_19"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_1_SEP_table_129.csv",
+                        "table_name": "pneuma_public_bi\\TableroSistemaPenal_1_SEP_table_129"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_2_SEP_table_105.csv",
+                        "table_name": "pneuma_public_bi\\TableroSistemaPenal_2_SEP_table_105"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_3_SEP_table_127.csv",
+                        "table_name": "pneuma_public_bi\\TableroSistemaPenal_3_SEP_table_127"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_4_SEP_table_178.csv",
+                        "table_name": "pneuma_public_bi\\TableroSistemaPenal_4_SEP_table_178"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_6_SEP_table_15.csv",
+                        "table_name": "pneuma_public_bi\\TableroSistemaPenal_6_SEP_table_15"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_7_SEP_table_84.csv",
+                        "table_name": "pneuma_public_bi\\TableroSistemaPenal_7_SEP_table_84"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_8_SEP_table_83.csv",
+                        "table_name": "pneuma_public_bi\\TableroSistemaPenal_8_SEP_table_83"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Taxpayer_4_SEP_table_203.csv",
+                        "table_name": "pneuma_public_bi\\Taxpayer_4_SEP_table_203"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Telco_1_SEP_table_58.csv",
+                        "table_name": "pneuma_public_bi\\Telco_1_SEP_table_58"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TrainsUK1_1_SEP_table_1.csv",
+                        "table_name": "pneuma_public_bi\\TrainsUK1_1_SEP_table_1"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TrainsUK1_2_SEP_table_159.csv",
+                        "table_name": "pneuma_public_bi\\TrainsUK1_2_SEP_table_159"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TrainsUK1_3_SEP_table_65.csv",
+                        "table_name": "pneuma_public_bi\\TrainsUK1_3_SEP_table_65"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TrainsUK1_4_SEP_table_115.csv",
+                        "table_name": "pneuma_public_bi\\TrainsUK1_4_SEP_table_115"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TrainsUK2_1_SEP_table_56.csv",
+                        "table_name": "pneuma_public_bi\\TrainsUK2_1_SEP_table_56"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/TrainsUK2_2_SEP_table_119.csv",
+                        "table_name": "pneuma_public_bi\\TrainsUK2_2_SEP_table_119"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/USCensus_1_SEP_table_77.csv",
+                        "table_name": "pneuma_public_bi\\USCensus_1_SEP_table_77"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/USCensus_2_SEP_table_60.csv",
+                        "table_name": "pneuma_public_bi\\USCensus_2_SEP_table_60"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Wins_1_SEP_table_45.csv",
+                        "table_name": "pneuma_public_bi\\Wins_1_SEP_table_45"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Wins_2_SEP_table_171.csv",
+                        "table_name": "pneuma_public_bi\\Wins_2_SEP_table_171"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Wins_3_SEP_table_54.csv",
+                        "table_name": "pneuma_public_bi\\Wins_3_SEP_table_54"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/Wins_4_SEP_table_112.csv",
+                        "table_name": "pneuma_public_bi\\Wins_4_SEP_table_112"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/YaleLanguages_1_SEP_table_189.csv",
+                        "table_name": "pneuma_public_bi\\YaleLanguages_1_SEP_table_189"
+                    },
+                    null,
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/YaleLanguages_3_SEP_table_74.csv",
+                        "table_name": "pneuma_public_bi\\YaleLanguages_3_SEP_table_74"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/YaleLanguages_4_SEP_table_72.csv",
+                        "table_name": "pneuma_public_bi\\YaleLanguages_4_SEP_table_72"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_public_bi/YaleLanguages_5_SEP_table_200.csv",
+                        "table_name": "pneuma_public_bi\\YaleLanguages_5_SEP_table_200"
+                    }
+                ]
+            }
+        },
+        "summarize": {
+            "status": "SUCCESS",
+            "message": "Total of 212 summaries has been added with IDs: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212.\n",
+            "data": {
+                "table_ids": [
+                    "../data_src/tables/pneuma_public_bi/Arade_1_SEP_table_73.csv",
+                    "../data_src/tables/pneuma_public_bi/Bimbo_1_SEP_table_42.csv",
+                    "../data_src/tables/pneuma_public_bi/CMSprovider_1_SEP_table_81.csv",
+                    "../data_src/tables/pneuma_public_bi/CMSprovider_2_SEP_table_194.csv",
+                    "../data_src/tables/pneuma_public_bi/CommonGovernment_10_SEP_table_183.csv",
+                    "../data_src/tables/pneuma_public_bi/Corporations_1_SEP_table_184.csv",
+                    "../data_src/tables/pneuma_public_bi/Eixo_1_SEP_table_139.csv",
+                    "../data_src/tables/pneuma_public_bi/Food_1_SEP_table_143.csv",
+                    "../data_src/tables/pneuma_public_bi/Generico_1_SEP_table_165.csv",
+                    "../data_src/tables/pneuma_public_bi/Generico_2_SEP_table_195.csv",
+                    "../data_src/tables/pneuma_public_bi/HashTags_1_SEP_table_149.csv",
+                    "../data_src/tables/pneuma_public_bi/Hatred_1_SEP_table_187.csv",
+                    "../data_src/tables/pneuma_public_bi/IGlocations1_1_SEP_table_123.csv",
+                    "../data_src/tables/pneuma_public_bi/IGlocations2_1_SEP_table_27.csv",
+                    "../data_src/tables/pneuma_public_bi/IGlocations2_2_SEP_table_148.csv",
+                    "../data_src/tables/pneuma_public_bi/IUBLibrary_1_SEP_table_10.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare1_1_SEP_table_11.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare1_2_SEP_table_40.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare2_1_SEP_table_95.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare2_2_SEP_table_182.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare3_1_SEP_table_169.csv",
+                    "../data_src/tables/pneuma_public_bi/MedPayment1_1_SEP_table_179.csv",
+                    "../data_src/tables/pneuma_public_bi/MedPayment2_1_SEP_table_185.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_10_SEP_table_21.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_12_SEP_table_166.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_15_SEP_table_138.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_17_SEP_table_68.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_18_SEP_table_14.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_19_SEP_table_31.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_22_SEP_table_8.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_23_SEP_table_20.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_24_SEP_table_39.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_25_SEP_table_63.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_26_SEP_table_85.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_2_SEP_table_157.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_31_SEP_table_55.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_38_SEP_table_199.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_39_SEP_table_128.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_40_SEP_table_180.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_41_SEP_table_5.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_45_SEP_table_111.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_49_SEP_table_94.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_52_SEP_table_91.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_53_SEP_table_181.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_57_SEP_table_51.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_58_SEP_table_67.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_5_SEP_table_99.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_63_SEP_table_82.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_65_SEP_table_122.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_66_SEP_table_2.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_67_SEP_table_43.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_68_SEP_table_13.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_7_SEP_table_130.csv",
+                    "../data_src/tables/pneuma_public_bi/Motos_1_SEP_table_59.csv",
+                    "../data_src/tables/pneuma_public_bi/Motos_2_SEP_table_163.csv",
+                    "../data_src/tables/pneuma_public_bi/MulheresMil_1_SEP_table_142.csv",
+                    "../data_src/tables/pneuma_public_bi/NYC_1_SEP_table_7.csv",
+                    "../data_src/tables/pneuma_public_bi/NYC_2_SEP_table_136.csv",
+                    "../data_src/tables/pneuma_public_bi/PanCreactomy1_1_SEP_table_155.csv",
+                    "../data_src/tables/pneuma_public_bi/PanCreactomy2_1_SEP_table_71.csv",
+                    "../data_src/tables/pneuma_public_bi/PanCreactomy2_2_SEP_table_108.csv",
+                    "../data_src/tables/pneuma_public_bi/Physicians_1_SEP_table_47.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate1_1_SEP_table_147.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate2_1_SEP_table_141.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate2_2_SEP_table_174.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate2_7_SEP_table_113.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_1_SEP_table_86.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_2_SEP_table_170.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_3_SEP_table_3.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_4_SEP_table_103.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin3_1_SEP_table_22.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin4_1_SEP_table_69.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_1_SEP_table_57.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_2_SEP_table_35.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_4_SEP_table_17.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_7_SEP_table_146.csv",
+                    "../data_src/tables/pneuma_public_bi/Romance_2_SEP_table_121.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_10_SEP_table_117.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_12_SEP_table_79.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_2_SEP_table_106.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_3_SEP_table_19.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_1_SEP_table_129.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_2_SEP_table_105.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_3_SEP_table_127.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_4_SEP_table_178.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_6_SEP_table_15.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_7_SEP_table_84.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_8_SEP_table_83.csv",
+                    "../data_src/tables/pneuma_public_bi/Taxpayer_4_SEP_table_203.csv",
+                    "../data_src/tables/pneuma_public_bi/Telco_1_SEP_table_58.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_1_SEP_table_1.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_2_SEP_table_159.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_3_SEP_table_65.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_4_SEP_table_115.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK2_1_SEP_table_56.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK2_2_SEP_table_119.csv",
+                    "../data_src/tables/pneuma_public_bi/USCensus_1_SEP_table_77.csv",
+                    "../data_src/tables/pneuma_public_bi/USCensus_2_SEP_table_60.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_1_SEP_table_45.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_2_SEP_table_171.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_3_SEP_table_54.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_4_SEP_table_112.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_1_SEP_table_189.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_3_SEP_table_74.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_4_SEP_table_72.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_5_SEP_table_200.csv"
+                ],
+                "summary_ids": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19,
+                    20,
+                    21,
+                    22,
+                    23,
+                    24,
+                    25,
+                    26,
+                    27,
+                    28,
+                    29,
+                    30,
+                    31,
+                    32,
+                    33,
+                    34,
+                    35,
+                    36,
+                    37,
+                    38,
+                    39,
+                    40,
+                    41,
+                    42,
+                    43,
+                    44,
+                    45,
+                    46,
+                    47,
+                    48,
+                    49,
+                    50,
+                    51,
+                    52,
+                    53,
+                    54,
+                    55,
+                    56,
+                    57,
+                    58,
+                    59,
+                    60,
+                    61,
+                    62,
+                    63,
+                    64,
+                    65,
+                    66,
+                    67,
+                    68,
+                    69,
+                    70,
+                    71,
+                    72,
+                    73,
+                    74,
+                    75,
+                    76,
+                    77,
+                    78,
+                    79,
+                    80,
+                    81,
+                    82,
+                    83,
+                    84,
+                    85,
+                    86,
+                    87,
+                    88,
+                    89,
+                    90,
+                    91,
+                    92,
+                    93,
+                    94,
+                    95,
+                    96,
+                    97,
+                    98,
+                    99,
+                    100,
+                    101,
+                    102,
+                    103,
+                    104,
+                    105,
+                    106,
+                    107,
+                    108,
+                    109,
+                    110,
+                    111,
+                    112,
+                    113,
+                    114,
+                    115,
+                    116,
+                    117,
+                    118,
+                    119,
+                    120,
+                    121,
+                    122,
+                    123,
+                    124,
+                    125,
+                    126,
+                    127,
+                    128,
+                    129,
+                    130,
+                    131,
+                    132,
+                    133,
+                    134,
+                    135,
+                    136,
+                    137,
+                    138,
+                    139,
+                    140,
+                    141,
+                    142,
+                    143,
+                    144,
+                    145,
+                    146,
+                    147,
+                    148,
+                    149,
+                    150,
+                    151,
+                    152,
+                    153,
+                    154,
+                    155,
+                    156,
+                    157,
+                    158,
+                    159,
+                    160,
+                    161,
+                    162,
+                    163,
+                    164,
+                    165,
+                    166,
+                    167,
+                    168,
+                    169,
+                    170,
+                    171,
+                    172,
+                    173,
+                    174,
+                    175,
+                    176,
+                    177,
+                    178,
+                    179,
+                    180,
+                    181,
+                    182,
+                    183,
+                    184,
+                    185,
+                    186,
+                    187,
+                    188,
+                    189,
+                    190,
+                    191,
+                    192,
+                    193,
+                    194,
+                    195,
+                    196,
+                    197,
+                    198,
+                    199,
+                    200,
+                    201,
+                    202,
+                    203,
+                    204,
+                    205,
+                    206,
+                    207,
+                    208,
+                    209,
+                    210,
+                    211,
+                    212
+                ]
+            }
+        },
+        "generate_index": {
+            "status": "SUCCESS",
+            "message": "Vector and keyword index named benchmark_index with id 213 and 214 has been created with 106 tables.",
+            "data": {
+                "table_ids": [
+                    "../data_src/tables/pneuma_public_bi/Arade_1_SEP_table_73.csv",
+                    "../data_src/tables/pneuma_public_bi/Bimbo_1_SEP_table_42.csv",
+                    "../data_src/tables/pneuma_public_bi/CMSprovider_1_SEP_table_81.csv",
+                    "../data_src/tables/pneuma_public_bi/CMSprovider_2_SEP_table_194.csv",
+                    "../data_src/tables/pneuma_public_bi/CommonGovernment_10_SEP_table_183.csv",
+                    "../data_src/tables/pneuma_public_bi/Corporations_1_SEP_table_184.csv",
+                    "../data_src/tables/pneuma_public_bi/Eixo_1_SEP_table_139.csv",
+                    "../data_src/tables/pneuma_public_bi/Food_1_SEP_table_143.csv",
+                    "../data_src/tables/pneuma_public_bi/Generico_1_SEP_table_165.csv",
+                    "../data_src/tables/pneuma_public_bi/Generico_2_SEP_table_195.csv",
+                    "../data_src/tables/pneuma_public_bi/HashTags_1_SEP_table_149.csv",
+                    "../data_src/tables/pneuma_public_bi/Hatred_1_SEP_table_187.csv",
+                    "../data_src/tables/pneuma_public_bi/IGlocations1_1_SEP_table_123.csv",
+                    "../data_src/tables/pneuma_public_bi/IGlocations2_1_SEP_table_27.csv",
+                    "../data_src/tables/pneuma_public_bi/IGlocations2_2_SEP_table_148.csv",
+                    "../data_src/tables/pneuma_public_bi/IUBLibrary_1_SEP_table_10.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare1_1_SEP_table_11.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare1_2_SEP_table_40.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare2_1_SEP_table_95.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare2_2_SEP_table_182.csv",
+                    "../data_src/tables/pneuma_public_bi/Medicare3_1_SEP_table_169.csv",
+                    "../data_src/tables/pneuma_public_bi/MedPayment1_1_SEP_table_179.csv",
+                    "../data_src/tables/pneuma_public_bi/MedPayment2_1_SEP_table_185.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_10_SEP_table_21.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_12_SEP_table_166.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_15_SEP_table_138.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_17_SEP_table_68.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_18_SEP_table_14.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_19_SEP_table_31.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_22_SEP_table_8.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_23_SEP_table_20.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_24_SEP_table_39.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_25_SEP_table_63.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_26_SEP_table_85.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_2_SEP_table_157.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_31_SEP_table_55.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_38_SEP_table_199.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_39_SEP_table_128.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_40_SEP_table_180.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_41_SEP_table_5.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_45_SEP_table_111.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_49_SEP_table_94.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_52_SEP_table_91.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_53_SEP_table_181.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_57_SEP_table_51.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_58_SEP_table_67.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_5_SEP_table_99.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_63_SEP_table_82.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_65_SEP_table_122.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_66_SEP_table_2.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_67_SEP_table_43.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_68_SEP_table_13.csv",
+                    "../data_src/tables/pneuma_public_bi/MLB_7_SEP_table_130.csv",
+                    "../data_src/tables/pneuma_public_bi/Motos_1_SEP_table_59.csv",
+                    "../data_src/tables/pneuma_public_bi/Motos_2_SEP_table_163.csv",
+                    "../data_src/tables/pneuma_public_bi/MulheresMil_1_SEP_table_142.csv",
+                    "../data_src/tables/pneuma_public_bi/NYC_1_SEP_table_7.csv",
+                    "../data_src/tables/pneuma_public_bi/NYC_2_SEP_table_136.csv",
+                    "../data_src/tables/pneuma_public_bi/PanCreactomy1_1_SEP_table_155.csv",
+                    "../data_src/tables/pneuma_public_bi/PanCreactomy2_1_SEP_table_71.csv",
+                    "../data_src/tables/pneuma_public_bi/PanCreactomy2_2_SEP_table_108.csv",
+                    "../data_src/tables/pneuma_public_bi/Physicians_1_SEP_table_47.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate1_1_SEP_table_147.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate2_1_SEP_table_141.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate2_2_SEP_table_174.csv",
+                    "../data_src/tables/pneuma_public_bi/RealEstate2_7_SEP_table_113.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_1_SEP_table_86.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_2_SEP_table_170.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_3_SEP_table_3.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin1_4_SEP_table_103.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin3_1_SEP_table_22.csv",
+                    "../data_src/tables/pneuma_public_bi/Redfin4_1_SEP_table_69.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_1_SEP_table_57.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_2_SEP_table_35.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_4_SEP_table_17.csv",
+                    "../data_src/tables/pneuma_public_bi/Rentabilidad_7_SEP_table_146.csv",
+                    "../data_src/tables/pneuma_public_bi/Romance_2_SEP_table_121.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_10_SEP_table_117.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_12_SEP_table_79.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_2_SEP_table_106.csv",
+                    "../data_src/tables/pneuma_public_bi/SalariesFrance_3_SEP_table_19.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_1_SEP_table_129.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_2_SEP_table_105.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_3_SEP_table_127.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_4_SEP_table_178.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_6_SEP_table_15.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_7_SEP_table_84.csv",
+                    "../data_src/tables/pneuma_public_bi/TableroSistemaPenal_8_SEP_table_83.csv",
+                    "../data_src/tables/pneuma_public_bi/Taxpayer_4_SEP_table_203.csv",
+                    "../data_src/tables/pneuma_public_bi/Telco_1_SEP_table_58.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_1_SEP_table_1.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_2_SEP_table_159.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_3_SEP_table_65.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK1_4_SEP_table_115.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK2_1_SEP_table_56.csv",
+                    "../data_src/tables/pneuma_public_bi/TrainsUK2_2_SEP_table_119.csv",
+                    "../data_src/tables/pneuma_public_bi/USCensus_1_SEP_table_77.csv",
+                    "../data_src/tables/pneuma_public_bi/USCensus_2_SEP_table_60.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_1_SEP_table_45.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_2_SEP_table_171.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_3_SEP_table_54.csv",
+                    "../data_src/tables/pneuma_public_bi/Wins_4_SEP_table_112.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_1_SEP_table_189.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_3_SEP_table_74.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_4_SEP_table_72.csv",
+                    "../data_src/tables/pneuma_public_bi/YaleLanguages_5_SEP_table_200.csv"
+                ],
+                "vector_index_id": 213,
+                "keyword_index_id": 214,
+                "vector_index_generation_time": 0.08037662506103516,
+                "keyword_index_generation_time": 0.06161212921142578
+            }
+        }
+    }
+}

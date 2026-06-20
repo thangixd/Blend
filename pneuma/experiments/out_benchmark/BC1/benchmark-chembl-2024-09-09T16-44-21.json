@@ -1,0 +1,581 @@
+{
+    "dataset": "chembl",
+    "timestamp": "2024-09-09T16-44-21",
+    "results": {
+        "read_tables": {
+            "file_count": 78,
+            "time": 6.553886413574219
+        },
+        "summarize": {
+            "table_count": 78,
+            "time": 318.17789220809937
+        }
+    },
+    "responses": {
+        "read_tables": {
+            "status": "SUCCESS",
+            "message": "78 files in folder ../data_src/tables/pneuma_chembl_10K has been processed.",
+            "data": {
+                "file_count": 78,
+                "tables": [
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/frac classification_SEP_table_1.csv",
+                        "table_name": "frac classification_SEP_table_1"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/molecule frac classification_SEP_table_50.csv",
+                        "table_name": "molecule frac classification_SEP_table_50"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/biotherapeutics_SEP_table_30.csv",
+                        "table_name": "biotherapeutics_SEP_table_30"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/chembl id lookup_SEP_table_63.csv",
+                        "table_name": "chembl id lookup_SEP_table_63"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/patent use codes_SEP_table_2.csv",
+                        "table_name": "patent use codes_SEP_table_2"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/binding sites_SEP_table_8.csv",
+                        "table_name": "binding sites_SEP_table_8"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/target relations_SEP_table_19.csv",
+                        "table_name": "target relations_SEP_table_19"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/activity stds lookup_SEP_table_45.csv",
+                        "table_name": "activity stds lookup_SEP_table_45"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/mechanism refs_SEP_table_59.csv",
+                        "table_name": "mechanism refs_SEP_table_59"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/bioassay ontology_SEP_table_4.csv",
+                        "table_name": "bioassay ontology_SEP_table_4"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/tissue dictionary_SEP_table_68.csv",
+                        "table_name": "tissue dictionary_SEP_table_68"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/metabolism refs_SEP_table_23.csv",
+                        "table_name": "metabolism refs_SEP_table_23"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/compound structural alerts_SEP_table_72.csv",
+                        "table_name": "compound structural alerts_SEP_table_72"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/biotherapeutic components_SEP_table_10.csv",
+                        "table_name": "biotherapeutic components_SEP_table_10"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/action type_SEP_table_21.csv",
+                        "table_name": "action type_SEP_table_21"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/usan stems_SEP_table_43.csv",
+                        "table_name": "usan stems_SEP_table_43"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/product patents_SEP_table_39.csv",
+                        "table_name": "product patents_SEP_table_39"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/relationship type_SEP_table_53.csv",
+                        "table_name": "relationship type_SEP_table_53"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/atc classification_SEP_table_3.csv",
+                        "table_name": "atc classification_SEP_table_3"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/research companies_SEP_table_14.csv",
+                        "table_name": "research companies_SEP_table_14"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/activity supp map_SEP_table_58.csv",
+                        "table_name": "activity supp map_SEP_table_58"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/molecule synonyms_SEP_table_51.csv",
+                        "table_name": "molecule synonyms_SEP_table_51"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/activities_SEP_table_52.csv",
+                        "table_name": "activities_SEP_table_52"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/assay type_SEP_table_48.csv",
+                        "table_name": "assay type_SEP_table_48"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/target components_SEP_table_46.csv",
+                        "table_name": "target components_SEP_table_46"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/warning refs_SEP_table_71.csv",
+                        "table_name": "warning refs_SEP_table_71"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/structural alert sets_SEP_table_18.csv",
+                        "table_name": "structural alert sets_SEP_table_18"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/data validity lookup_SEP_table_29.csv",
+                        "table_name": "data validity lookup_SEP_table_29"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/docs_SEP_table_15.csv",
+                        "table_name": "docs_SEP_table_15"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/cell dictionary_SEP_table_28.csv",
+                        "table_name": "cell dictionary_SEP_table_28"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/component sequences_SEP_table_56.csv",
+                        "table_name": "component sequences_SEP_table_56"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/curation lookup_SEP_table_67.csv",
+                        "table_name": "curation lookup_SEP_table_67"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/site components_SEP_table_44.csv",
+                        "table_name": "site components_SEP_table_44"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/chembl release_SEP_table_12.csv",
+                        "table_name": "chembl release_SEP_table_12"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/hrac classification_SEP_table_62.csv",
+                        "table_name": "hrac classification_SEP_table_62"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/compound properties_SEP_table_7.csv",
+                        "table_name": "compound properties_SEP_table_7"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/molecule dictionary_SEP_table_54.csv",
+                        "table_name": "molecule dictionary_SEP_table_54"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/component synonyms_SEP_table_60.csv",
+                        "table_name": "component synonyms_SEP_table_60"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/molecule hrac classification_SEP_table_27.csv",
+                        "table_name": "molecule hrac classification_SEP_table_27"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/predicted binding domains_SEP_table_25.csv",
+                        "table_name": "predicted binding domains_SEP_table_25"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/assays_SEP_table_65.csv",
+                        "table_name": "assays_SEP_table_65"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/molecule irac classification_SEP_table_70.csv",
+                        "table_name": "molecule irac classification_SEP_table_70"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/products_SEP_table_26.csv",
+                        "table_name": "products_SEP_table_26"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/assay classification_SEP_table_57.csv",
+                        "table_name": "assay classification_SEP_table_57"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/variant sequences_SEP_table_16.csv",
+                        "table_name": "variant sequences_SEP_table_16"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/version_SEP_table_35.csv",
+                        "table_name": "version_SEP_table_35"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/activity supp_SEP_table_40.csv",
+                        "table_name": "activity supp_SEP_table_40"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/drug indication_SEP_table_66.csv",
+                        "table_name": "drug indication_SEP_table_66"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/activity smid_SEP_table_77.csv",
+                        "table_name": "activity smid_SEP_table_77"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/target type_SEP_table_75.csv",
+                        "table_name": "target type_SEP_table_75"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/organism class_SEP_table_34.csv",
+                        "table_name": "organism class_SEP_table_34"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/protein classification_SEP_table_22.csv",
+                        "table_name": "protein classification_SEP_table_22"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/drug mechanism_SEP_table_24.csv",
+                        "table_name": "drug mechanism_SEP_table_24"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/assay class map_SEP_table_42.csv",
+                        "table_name": "assay class map_SEP_table_42"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/component go_SEP_table_69.csv",
+                        "table_name": "component go_SEP_table_69"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/indication refs_SEP_table_17.csv",
+                        "table_name": "indication refs_SEP_table_17"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/molecule atc classification_SEP_table_33.csv",
+                        "table_name": "molecule atc classification_SEP_table_33"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/drug warning_SEP_table_47.csv",
+                        "table_name": "drug warning_SEP_table_47"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/assay parameters_SEP_table_37.csv",
+                        "table_name": "assay parameters_SEP_table_37"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/source_SEP_table_55.csv",
+                        "table_name": "source_SEP_table_55"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/molecule hierarchy_SEP_table_36.csv",
+                        "table_name": "molecule hierarchy_SEP_table_36"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/compound structures_SEP_table_74.csv",
+                        "table_name": "compound structures_SEP_table_74"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/go classification_SEP_table_9.csv",
+                        "table_name": "go classification_SEP_table_9"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/metabolism_SEP_table_11.csv",
+                        "table_name": "metabolism_SEP_table_11"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/target dictionary_SEP_table_78.csv",
+                        "table_name": "target dictionary_SEP_table_78"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/ligand eff_SEP_table_32.csv",
+                        "table_name": "ligand eff_SEP_table_32"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/compound records_SEP_table_6.csv",
+                        "table_name": "compound records_SEP_table_6"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/protein class synonyms_SEP_table_31.csv",
+                        "table_name": "protein class synonyms_SEP_table_31"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/bio component sequences_SEP_table_41.csv",
+                        "table_name": "bio component sequences_SEP_table_41"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/component class_SEP_table_73.csv",
+                        "table_name": "component class_SEP_table_73"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/domains_SEP_table_64.csv",
+                        "table_name": "domains_SEP_table_64"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/irac classification_SEP_table_49.csv",
+                        "table_name": "irac classification_SEP_table_49"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/structural alerts_SEP_table_76.csv",
+                        "table_name": "structural alerts_SEP_table_76"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/research stem_SEP_table_20.csv",
+                        "table_name": "research stem_SEP_table_20"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/formulations_SEP_table_61.csv",
+                        "table_name": "formulations_SEP_table_61"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/activity properties_SEP_table_13.csv",
+                        "table_name": "activity properties_SEP_table_13"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/confidence score lookup_SEP_table_5.csv",
+                        "table_name": "confidence score lookup_SEP_table_5"
+                    },
+                    {
+                        "table_id": "../data_src/tables/pneuma_chembl_10K/defined daily dose_SEP_table_38.csv",
+                        "table_name": "defined daily dose_SEP_table_38"
+                    }
+                ]
+            }
+        },
+        "summarize": {
+            "status": "SUCCESS",
+            "message": "Total of 156 summaries has been added with IDs: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156.\n",
+            "data": {
+                "table_ids": [
+                    "../data_src/tables/pneuma_chembl_10K/frac classification_SEP_table_1.csv",
+                    "../data_src/tables/pneuma_chembl_10K/molecule frac classification_SEP_table_50.csv",
+                    "../data_src/tables/pneuma_chembl_10K/biotherapeutics_SEP_table_30.csv",
+                    "../data_src/tables/pneuma_chembl_10K/chembl id lookup_SEP_table_63.csv",
+                    "../data_src/tables/pneuma_chembl_10K/patent use codes_SEP_table_2.csv",
+                    "../data_src/tables/pneuma_chembl_10K/binding sites_SEP_table_8.csv",
+                    "../data_src/tables/pneuma_chembl_10K/target relations_SEP_table_19.csv",
+                    "../data_src/tables/pneuma_chembl_10K/activity stds lookup_SEP_table_45.csv",
+                    "../data_src/tables/pneuma_chembl_10K/mechanism refs_SEP_table_59.csv",
+                    "../data_src/tables/pneuma_chembl_10K/bioassay ontology_SEP_table_4.csv",
+                    "../data_src/tables/pneuma_chembl_10K/tissue dictionary_SEP_table_68.csv",
+                    "../data_src/tables/pneuma_chembl_10K/metabolism refs_SEP_table_23.csv",
+                    "../data_src/tables/pneuma_chembl_10K/compound structural alerts_SEP_table_72.csv",
+                    "../data_src/tables/pneuma_chembl_10K/biotherapeutic components_SEP_table_10.csv",
+                    "../data_src/tables/pneuma_chembl_10K/action type_SEP_table_21.csv",
+                    "../data_src/tables/pneuma_chembl_10K/usan stems_SEP_table_43.csv",
+                    "../data_src/tables/pneuma_chembl_10K/product patents_SEP_table_39.csv",
+                    "../data_src/tables/pneuma_chembl_10K/relationship type_SEP_table_53.csv",
+                    "../data_src/tables/pneuma_chembl_10K/atc classification_SEP_table_3.csv",
+                    "../data_src/tables/pneuma_chembl_10K/research companies_SEP_table_14.csv",
+                    "../data_src/tables/pneuma_chembl_10K/activity supp map_SEP_table_58.csv",
+                    "../data_src/tables/pneuma_chembl_10K/molecule synonyms_SEP_table_51.csv",
+                    "../data_src/tables/pneuma_chembl_10K/activities_SEP_table_52.csv",
+                    "../data_src/tables/pneuma_chembl_10K/assay type_SEP_table_48.csv",
+                    "../data_src/tables/pneuma_chembl_10K/target components_SEP_table_46.csv",
+                    "../data_src/tables/pneuma_chembl_10K/warning refs_SEP_table_71.csv",
+                    "../data_src/tables/pneuma_chembl_10K/structural alert sets_SEP_table_18.csv",
+                    "../data_src/tables/pneuma_chembl_10K/data validity lookup_SEP_table_29.csv",
+                    "../data_src/tables/pneuma_chembl_10K/docs_SEP_table_15.csv",
+                    "../data_src/tables/pneuma_chembl_10K/cell dictionary_SEP_table_28.csv",
+                    "../data_src/tables/pneuma_chembl_10K/component sequences_SEP_table_56.csv",
+                    "../data_src/tables/pneuma_chembl_10K/curation lookup_SEP_table_67.csv",
+                    "../data_src/tables/pneuma_chembl_10K/site components_SEP_table_44.csv",
+                    "../data_src/tables/pneuma_chembl_10K/chembl release_SEP_table_12.csv",
+                    "../data_src/tables/pneuma_chembl_10K/hrac classification_SEP_table_62.csv",
+                    "../data_src/tables/pneuma_chembl_10K/compound properties_SEP_table_7.csv",
+                    "../data_src/tables/pneuma_chembl_10K/molecule dictionary_SEP_table_54.csv",
+                    "../data_src/tables/pneuma_chembl_10K/component synonyms_SEP_table_60.csv",
+                    "../data_src/tables/pneuma_chembl_10K/molecule hrac classification_SEP_table_27.csv",
+                    "../data_src/tables/pneuma_chembl_10K/predicted binding domains_SEP_table_25.csv",
+                    "../data_src/tables/pneuma_chembl_10K/assays_SEP_table_65.csv",
+                    "../data_src/tables/pneuma_chembl_10K/molecule irac classification_SEP_table_70.csv",
+                    "../data_src/tables/pneuma_chembl_10K/products_SEP_table_26.csv",
+                    "../data_src/tables/pneuma_chembl_10K/assay classification_SEP_table_57.csv",
+                    "../data_src/tables/pneuma_chembl_10K/variant sequences_SEP_table_16.csv",
+                    "../data_src/tables/pneuma_chembl_10K/version_SEP_table_35.csv",
+                    "../data_src/tables/pneuma_chembl_10K/activity supp_SEP_table_40.csv",
+                    "../data_src/tables/pneuma_chembl_10K/drug indication_SEP_table_66.csv",
+                    "../data_src/tables/pneuma_chembl_10K/activity smid_SEP_table_77.csv",
+                    "../data_src/tables/pneuma_chembl_10K/target type_SEP_table_75.csv",
+                    "../data_src/tables/pneuma_chembl_10K/organism class_SEP_table_34.csv",
+                    "../data_src/tables/pneuma_chembl_10K/protein classification_SEP_table_22.csv",
+                    "../data_src/tables/pneuma_chembl_10K/drug mechanism_SEP_table_24.csv",
+                    "../data_src/tables/pneuma_chembl_10K/assay class map_SEP_table_42.csv",
+                    "../data_src/tables/pneuma_chembl_10K/component go_SEP_table_69.csv",
+                    "../data_src/tables/pneuma_chembl_10K/indication refs_SEP_table_17.csv",
+                    "../data_src/tables/pneuma_chembl_10K/molecule atc classification_SEP_table_33.csv",
+                    "../data_src/tables/pneuma_chembl_10K/drug warning_SEP_table_47.csv",
+                    "../data_src/tables/pneuma_chembl_10K/assay parameters_SEP_table_37.csv",
+                    "../data_src/tables/pneuma_chembl_10K/source_SEP_table_55.csv",
+                    "../data_src/tables/pneuma_chembl_10K/molecule hierarchy_SEP_table_36.csv",
+                    "../data_src/tables/pneuma_chembl_10K/compound structures_SEP_table_74.csv",
+                    "../data_src/tables/pneuma_chembl_10K/go classification_SEP_table_9.csv",
+                    "../data_src/tables/pneuma_chembl_10K/metabolism_SEP_table_11.csv",
+                    "../data_src/tables/pneuma_chembl_10K/target dictionary_SEP_table_78.csv",
+                    "../data_src/tables/pneuma_chembl_10K/ligand eff_SEP_table_32.csv",
+                    "../data_src/tables/pneuma_chembl_10K/compound records_SEP_table_6.csv",
+                    "../data_src/tables/pneuma_chembl_10K/protein class synonyms_SEP_table_31.csv",
+                    "../data_src/tables/pneuma_chembl_10K/bio component sequences_SEP_table_41.csv",
+                    "../data_src/tables/pneuma_chembl_10K/component class_SEP_table_73.csv",
+                    "../data_src/tables/pneuma_chembl_10K/domains_SEP_table_64.csv",
+                    "../data_src/tables/pneuma_chembl_10K/irac classification_SEP_table_49.csv",
+                    "../data_src/tables/pneuma_chembl_10K/structural alerts_SEP_table_76.csv",
+                    "../data_src/tables/pneuma_chembl_10K/research stem_SEP_table_20.csv",
+                    "../data_src/tables/pneuma_chembl_10K/formulations_SEP_table_61.csv",
+                    "../data_src/tables/pneuma_chembl_10K/activity properties_SEP_table_13.csv",
+                    "../data_src/tables/pneuma_chembl_10K/confidence score lookup_SEP_table_5.csv",
+                    "../data_src/tables/pneuma_chembl_10K/defined daily dose_SEP_table_38.csv"
+                ],
+                "summary_ids": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19,
+                    20,
+                    21,
+                    22,
+                    23,
+                    24,
+                    25,
+                    26,
+                    27,
+                    28,
+                    29,
+                    30,
+                    31,
+                    32,
+                    33,
+                    34,
+                    35,
+                    36,
+                    37,
+                    38,
+                    39,
+                    40,
+                    41,
+                    42,
+                    43,
+                    44,
+                    45,
+                    46,
+                    47,
+                    48,
+                    49,
+                    50,
+                    51,
+                    52,
+                    53,
+                    54,
+                    55,
+                    56,
+                    57,
+                    58,
+                    59,
+                    60,
+                    61,
+                    62,
+                    63,
+                    64,
+                    65,
+                    66,
+                    67,
+                    68,
+                    69,
+                    70,
+                    71,
+                    72,
+                    73,
+                    74,
+                    75,
+                    76,
+                    77,
+                    78,
+                    79,
+                    80,
+                    81,
+                    82,
+                    83,
+                    84,
+                    85,
+                    86,
+                    87,
+                    88,
+                    89,
+                    90,
+                    91,
+                    92,
+                    93,
+                    94,
+                    95,
+                    96,
+                    97,
+                    98,
+                    99,
+                    100,
+                    101,
+                    102,
+                    103,
+                    104,
+                    105,
+                    106,
+                    107,
+                    108,
+                    109,
+                    110,
+                    111,
+                    112,
+                    113,
+                    114,
+                    115,
+                    116,
+                    117,
+                    118,
+                    119,
+                    120,
+                    121,
+                    122,
+                    123,
+                    124,
+                    125,
+                    126,
+                    127,
+                    128,
+                    129,
+                    130,
+                    131,
+                    132,
+                    133,
+                    134,
+                    135,
+                    136,
+                    137,
+                    138,
+                    139,
+                    140,
+                    141,
+                    142,
+                    143,
+                    144,
+                    145,
+                    146,
+                    147,
+                    148,
+                    149,
+                    150,
+                    151,
+                    152,
+                    153,
+                    154,
+                    155,
+                    156
+                ]
+            }
+        }
+    }
+}
