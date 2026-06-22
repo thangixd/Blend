@@ -273,13 +273,13 @@ class _VectorIndex:
         if allowed_doc_ids is None:
             _t0 = time.perf_counter()
             scores = self._all_embeddings @ q
-            self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
             order = _topk_indices(scores, k)
             out = {}
             for i in order:
                 did = self._all_doc_ids[i]
                 sim = max(0.0, float(scores[i]))
                 out[did] = (sim, self._all_documents[i])
+            self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
             return out, q
 
         if not allowed_doc_ids:
@@ -297,13 +297,13 @@ class _VectorIndex:
         sub = self._all_embeddings[rows]
         _t0 = time.perf_counter()
         scores = sub @ q
-        self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
         order = _topk_indices(scores, k)
         out = {}
         for j in order:
             did = dids[j]
             sim = max(0.0, float(scores[j]))
             out[did] = (sim, self._all_documents[rows[j]])
+        self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
         return out, q
 
     def score_for_ids(self, query_vec, doc_ids):
@@ -320,18 +320,16 @@ class _VectorIndex:
         n = float(np.linalg.norm(q))
         q_norm = q if n <= 0 else q / n
 
-        # Time only the actual matvec.
+        # Time the matvec + topk + dict build 
         _t0 = time.perf_counter()
         sims = self._all_embeddings[rows] @ q_norm
-        self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
-
-        # Output dict construction lives outside the timer; clamp to >= 0
-        # to preserve prior return contract.
         sims = np.maximum(sims, 0.0)
-        return {
+        result = {
             d: (float(sims[i]), self._all_documents[rows[i]])
             for i, (d, _r) in enumerate(valid)
         }
+        self._last_vector_ms += (time.perf_counter() - _t0) * 1000.0
+        return result
 
 
 def hybrid_retrieve(

@@ -192,6 +192,9 @@ def _evaluate(
 
     Lazy imports of bm25s / Stemmer / numpy / the vendored PNEUMA tree
     keep unit tests that mock this function free of those dependencies.
+
+    ``run_pneuma_benchmark`` passes ``stemmer``, ``dictionary_id_bm25``, and
+    ``hybrid_retriever`` as kwargs to avoid rebuilding them on every call.
     """
     import bm25s  # type: ignore[import-untyped]
     import numpy as np  # local to ease unit-test mocking
@@ -204,7 +207,7 @@ def _evaluate(
         RerankingMode,
     )
 
-    stemmer = Stemmer.Stemmer("english")
+    stemmer = kwargs.get("stemmer") or Stemmer.Stemmer("english")
     increased_k = k * n
 
     embedder_factory = kwargs.get("embedder_factory")
@@ -225,7 +228,7 @@ def _evaluate(
         embedder.encode([query])[0], dtype=np.float32
     ).tolist()
 
-    query_tokens = bm25s.tokenize(query, stemmer=stemmer, show_progress=False)
+    query_tokens = bm25s.tokenize(query, stopwords="en", stemmer=stemmer, show_progress=False)
 
     t_vec = time.perf_counter()
     vec_res = collection.query(
@@ -240,13 +243,12 @@ def _evaluate(
     )
     bm25_res = (bm25_results, bm25_scores)
 
-    # ---- Hybrid merge (+ optional LLM rerank inside judging() ctx) -------
-    dictionary_id_bm25 = _build_dictionary_id_bm25(retriever)
+
+    dictionary_id_bm25 = kwargs.get("dictionary_id_bm25") or _build_dictionary_id_bm25(retriever)
     rmode_enum = RerankingMode.LLM if rerank_mode == "on" else RerankingMode.NONE
 
-
     reranker = kwargs.get("reranker")
-    hybrid_retriever = HybridRetriever(reranker, rmode_enum)
+    hybrid_retriever = kwargs.get("hybrid_retriever") or HybridRetriever(reranker, rmode_enum)
 
     all_nodes = hybrid_retriever.retrieve(
         retriever,
@@ -261,12 +263,18 @@ def _evaluate(
         dictionary_id_bm25,
     )
 
-    # all_nodes is [(pneuma_id, score, doc), ...]; PNEUMA strips the
-    # ``_SEP_<role>`` suffix before scoring against ``answer_tables``.
+
     retrieved_pneuma: list[str] = []
-    for entry in all_nodes[:k]:
+    _seen_tables: set[str] = set()
+    for entry in all_nodes:
+        if len(retrieved_pneuma) == k:
+            break
         pneuma_id = entry[0]
-        table_name = pneuma_id.split("_SEP_")[0]
+        parts = pneuma_id.split("_SEP_")
+        table_name = parts[1].split(".")[0] if len(parts) >= 2 else parts[0]
+        if table_name in _seen_tables:
+            continue
+        _seen_tables.add(table_name)
         retrieved_pneuma.append(table_name)
 
     return {
@@ -298,6 +306,71 @@ _PARITY_DELTAS_PNEUMA: list[dict] = [
             "PNEUMA's prompt_pipeline batches multiple judgments per call "
             "(batch_size=2), so judge_calls is a lower bound on the number "
             "of judgments evaluated."
+        ),
+    },
+    {
+        "id": "D19",
+        "title": "Chunk-id splitter was off-by-one; now correctly extracts table_NNN",
+        "status": "closed",
+        "note": (
+            "The original extractor took parts[0] of the '_SEP_'-split, which "
+            "is the leading file path component, not the table id.  Fixed to "
+            "take parts[1].split('.')[0], which is 'table_NNN' from the PNEUMA "
+            "chunk-id grammar '<path>_SEP_table_NNN.csv_SEP_<role>_SEP_<idx>'. "
+            "This was the root cause of hit_rate=0.00 across all runs."
+        ),
+    },
+    {
+        "id": "D20",
+        "title": "Query-side BM25 tokeniser now passes stopwords='en'",
+        "status": "closed",
+        "note": (
+            "bm25s.tokenize() on the query path was missing stopwords='en', "
+            "while the corpus-side tokenisation in PNEUMA's IndexGenerator and "
+            "Blend's _BM25Index._tokenize both pass it.  Adding stopwords='en' "
+            "to the query tokeniser makes scores comparable across the two "
+            "retrieval paths."
+        ),
+    },
+    {
+        "id": "D21",
+        "title": "Per-query result list now contains distinct table ids (dedup-by-table)",
+        "status": "closed",
+        "note": (
+            "The previous implementation took all_nodes[:k] and appended one "
+            "entry per chunk, so a single table with multiple top-ranked chunks "
+            "could occupy several result slots.  The loop now iterates all_nodes, "
+            "deduplicates by table_name, and breaks once len(retrieved)==k. "
+            "This mirrors Blend's seen-dict at src/NLSeeker/retrieve.py:458-475. "
+            "Affects MRR; hit@k and recall@k are set-based at metric time and "
+            "were duplication-invariant."
+        ),
+    },
+    {
+        "id": "D22",
+        "title": "Blend vector_ms timer now brackets matvec + topk + dict build",
+        "status": "closed-by-scope-symmetry",
+        "note": (
+            "Blend's _VectorIndex timer previously covered only the matrix-vector "
+            "multiply.  PNEUMA's vector_ms covers the full collection.query() call "
+            "(HNSW traversal + result deserialisation + topk + ids/documents "
+            "materialisation).  Widening Blend's timer to include topk + dict build "
+            "makes both measure 'ranked-id list from query embedding in hand'; the "
+            "remaining difference (HNSW vs brute-force kernel) is the algorithmic "
+            "contrast this metric is intended to expose."
+        ),
+    },
+    {
+        "id": "D24",
+        "title": "judge_ms scope still differs: PNEUMA wraps full _llm_rerank body",
+        "status": "documented-residual",
+        "note": (
+            "_patch_llm_rerank_judge_scope in pneuma_patches.py wraps the full "
+            "_llm_rerank body (including prompt construction), where Blend wraps "
+            "only llm.generate(...).  Magnitude is sub-millisecond per call.  "
+            "Not closed because closing it would require restricting the patch to "
+            "the HTTP fan-out or expanding Blend's scope, both of which add "
+            "complexity for negligible gain."
         ),
     },
 ]
@@ -478,12 +551,6 @@ def run_pneuma_benchmark(
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    # D17 parity with Blend: seed every RNG (python random, numpy, torch,
-    # transformers) before the retrieval loop starts.  Mirrors
-    # ``scripts.benchmark.run.run_benchmark`` which calls ``seed_all(42)``
-    # at the same lifecycle point — without this, two PNEUMA-side runs
-    # against the same index can drift on torch-init paths the embedder
-    # touches lazily.
     seed_all(42)
 
     bx_jsonl = Path(lake_dir) / "_bx_questions.jsonl"
@@ -493,6 +560,20 @@ def run_pneuma_benchmark(
     # (family, question, rerank_mode, k) tuples.
     collection = _open_collection(Path(index_dir))
     retriever = _open_retriever(Path(index_dir))
+
+
+    import Stemmer as _Stemmer  # type: ignore[import-untyped]
+    _stemmer = _Stemmer.Stemmer("english")
+    _dictionary_id_bm25 = _build_dictionary_id_bm25(retriever)
+
+    from pneuma_retriever.hybrid_retriever import (  # type: ignore[import-not-found]
+        HybridRetriever as _HybridRetriever,
+        RerankingMode as _RerankingMode,
+    )
+    _hybrid_retrievers: dict[str, Any] = {
+        "off": _HybridRetriever(None, _RerankingMode.NONE),
+        "on":  _HybridRetriever(None, _RerankingMode.LLM),
+    }
 
     _embedder_box: list[Any] = [embedder]  # closed over below
 
@@ -533,13 +614,7 @@ def run_pneuma_benchmark(
 
                     JUDGE_TIMER.reset()
                     t0 = time.perf_counter()
-                    # ``in_judge_ctx`` is forwarded into ``_evaluate`` which
-                    # opens ``JUDGE_TIMER.judging()`` only around the actual
-                    # rerank HTTP calls (HybridRetriever.retrieve when
-                    # rerank_mode=on).  This keeps ``judge_ms`` scoped to the
-                    # judge LLM hops, matching Blend's NLSeeker scope at
-                    # ``src/NLSeeker/retrieve.py:llm_rerank`` (which flips
-                    # ``in_judge`` only around ``llm.generate(...)``).
+
                     result = _evaluate(
                         collection=collection,
                         retriever=retriever,
@@ -550,10 +625,11 @@ def run_pneuma_benchmark(
                         rerank_mode=rerank_mode,
                         in_judge_ctx=in_judge_ctx,
                         embedder_factory=_get_embedder,
+                        stemmer=_stemmer,
+                        dictionary_id_bm25=_dictionary_id_bm25,
+                        hybrid_retriever=_hybrid_retrievers[rerank_mode],
                     )
                     latency_ms = (time.perf_counter() - t0) * 1000.0
-                    # JUDGE_TIMER is thread-local; _evaluate must run on
-                    # this thread (no thread-pool around per_query loop).
                     judge_metrics = JUDGE_TIMER.read()
 
                     retrieved_ids = result["retrieved_pneuma_ids"]
@@ -591,15 +667,11 @@ def run_pneuma_benchmark(
 
     run_wall = time.perf_counter() - t_run0
 
-    # Stable ordering: Blend sorts by (family, qid, rerank_mode, k); match it.
     per_query.sort(key=lambda r: (r.family, r.question_id, r.rerank_mode, r.k))
 
     write_per_query_jsonl(run_dir / "per_query.jsonl", per_query)
     summary: list[SummaryRow] = aggregate_summary(per_query, n=n, alpha=alpha)
     write_summary_csv(run_dir / "summary.csv", summary)
-    # write_pneuma_compat_jsonl accepts SummaryRow instances directly (no
-    # dict transform needed — SummaryRow already has dataset/family/k/n/
-    # alpha/hit_rate/n_questions/rerank_mode attributes).
     write_pneuma_compat_jsonl(run_dir / "pneuma_compat.jsonl", summary)
 
     meta = _build_run_meta(

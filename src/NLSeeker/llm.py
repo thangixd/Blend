@@ -302,21 +302,13 @@ class _OpenAILLM:
         *,
         concurrency: int | None = None,
     ) -> list:
-        """Issue chat-completion prompts to the OpenAI-compat backend.
 
-        concurrency=None (default) uses ThreadPoolExecutor(_OPENAI_LLM_CONCURRENCY).
-        concurrency=1 issues prompts sequentially (no executor) - used by
-        benchmark mode for PNEUMA-shape parity.
-        concurrency>=2 caps the executor at that width.
-        """
         prompt_list = list(prompts)
         n = len(prompt_list)
         if n == 0:
             return []
 
-        # Warm up the lazy tokenizer property once before fanning out so
-        # concurrent _truncate_prompt callers don't race on the
-        # AutoTokenizer.from_pretrained() in self.tokenizer.
+
         if self.tokenizer_id:
             _ = self.tokenizer
 
@@ -327,12 +319,11 @@ class _OpenAILLM:
                 "messages": [{"role": "user", "content": safe_prompt}],
                 "max_tokens": max_new_tokens,
                 "temperature": 0.0,
+                "top_p": None,
             }
             if not _is_ollama_endpoint(self.base_url):
                 kwargs["seed"] = 42
-            # JUDGE_TIMER instrumentation: time only calls made inside a
-            # JUDGE_TIMER.judging() context (i.e. the rerank judge path).
-            # Non-judge generate() calls (summarizer, etc.) bypass this.
+
             from scripts.benchmark._judge_timer import JUDGE_TIMER
             if JUDGE_TIMER.in_judge:
                 t0 = time.monotonic()
@@ -351,22 +342,15 @@ class _OpenAILLM:
         if concurrency == 1:
             return [_one(p) for p in prompt_list]
 
-        # Single-prompt or global-cap=1: serial dispatch keeps the call
-        # structure identical to the simple loop (no executor overhead).
         if n == 1 or _OPENAI_LLM_CONCURRENCY <= 1:
             return [_one(p) for p in prompt_list]
 
-        # Default concurrent path: ThreadPoolExecutor for batched OpenAI-compat
-        # dispatch. concurrency=None falls back to the global
-        # _OPENAI_LLM_CONCURRENCY ceiling; concurrency >= 2 uses that exact
-        # value as the cap.
+
         cap = _OPENAI_LLM_CONCURRENCY if concurrency is None else concurrency
         workers = min(cap, n)
         out: list = [None] * n
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            # executor.map preserves submission order in the returned
-            # iterator, so the i-th completion ends up in out[i] without
-            # any explicit index threading.
+
             for i, completion in enumerate(pool.map(_one, prompt_list)):
                 out[i] = completion
         return out

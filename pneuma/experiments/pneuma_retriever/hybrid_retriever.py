@@ -99,7 +99,7 @@ class HybridRetriever:
                     "role": "user",
                     "content": self._get_relevance_prompt(
                         node[2], 
-                        "content" if node[0].split("_SEP_")[1].startswith("contents")
+                        "content" if "_SEP_contents_SEP_" in node[0]
                         else "context", question
                     ),
                 }
