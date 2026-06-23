@@ -40,7 +40,7 @@ def build_profiled_narration_prompt(
     semantic_sentence: str,
 ) -> str:
     column_list_block = " | ".join(str(c) for c in columns)
-    samples = list(sample_values)
+    samples = [str(v) for v in sample_values]
 
     lines: list[str] = [
         "A table has the following columns:",
