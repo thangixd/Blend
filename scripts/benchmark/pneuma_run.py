@@ -341,9 +341,11 @@ _PARITY_DELTAS_PNEUMA: list[dict] = [
             "entry per chunk, so a single table with multiple top-ranked chunks "
             "could occupy several result slots.  The loop now iterates all_nodes, "
             "deduplicates by table_name, and breaks once len(retrieved)==k. "
-            "This mirrors Blend's seen-dict at src/NLSeeker/retrieve.py:458-475. "
-            "Affects MRR; hit@k and recall@k are set-based at metric time and "
-            "were duplication-invariant."
+            "Blend's production path was fixed in lockstep "
+            "(src/NLSeeker/retrieve.py:search): the dedup loop now iterates the "
+            "full reranked pool rather than the candidates[:k] prefix. "
+            "Affects MRR and hit@k/recall@k whenever the per-table chunk count "
+            "exceeds 1 (public_bi has ~25 chunks/table, vs PNEUMA's ~10)."
         ),
     },
     {

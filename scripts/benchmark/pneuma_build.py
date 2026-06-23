@@ -114,7 +114,10 @@ def build_pneuma_index(
 
     t0 = time.monotonic()
     pneuma.setup()
-    pneuma.add_tables(str(tables_view), creator="bench", source="file")
+    pneuma.add_tables(
+        str(tables_view), creator="bench", source="file",
+        accept_duplicates=True,
+    )
     if metadata_src.exists():
         pneuma_metadata = _write_pneuma_metadata_csv(
             blend_metadata=metadata_src,

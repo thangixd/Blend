@@ -319,7 +319,7 @@ class _OpenAILLM:
                 "messages": [{"role": "user", "content": safe_prompt}],
                 "max_tokens": max_new_tokens,
                 "temperature": 0.0,
-                "top_p": None,
+                "top_p": 1.0,
             }
             if not _is_ollama_endpoint(self.base_url):
                 kwargs["seed"] = 42

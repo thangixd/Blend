@@ -436,11 +436,6 @@ def search(
     rerank: bool = True,
     judge_concurrency: int | None = None, 
 ) -> List[RetrievalResult]:
-    """Hybrid retrieve → LLM rerank → truncate to ``k`` → dedupe by table.
-
-    Truncation precedes deduping, so the result can hold fewer than ``k``
-    entries when one table dominates several top positions.
-    """
     fused = hybrid_retrieve(
         query, bm25, vector, k=k, n=n, alpha=alpha, table_filter=table_filter
     )
@@ -453,10 +448,10 @@ def search(
         # Wrap each candidate as (cand, True) to keep downstream tuple shape stable.
         candidates = [(c, True) for c in fused]
 
-    top_k_positions = candidates[:k]
-
     seen = {}
-    for hit, relevant in top_k_positions:
+    for hit, relevant in candidates:
+        if len(seen) == k:
+            break
         try:
             table_id, _, _ = parse_doc_id(hit.doc_id)
         except ValueError:

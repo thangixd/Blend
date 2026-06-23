@@ -334,7 +334,7 @@ def _patch_prompt_openai_llm(*, llm_endpoint_url: str, llm_model_id: str) -> Non
                         messages=conv,
                         max_tokens=max_new_tokens,
                         temperature=0.0,
-                        top_p=top_p,
+                        top_p=1.0,
                         seed=42,
                     )
                 except (openai.OpenAIError, httpx.HTTPError) as e:
@@ -457,7 +457,7 @@ def _patch_prompt_pipeline(*, llm_endpoint_url: str, llm_model_id: str) -> None:
                         messages=conv,
                         max_tokens=max_new_tokens,
                         temperature=0.0,
-                        top_p=top_p,
+                        top_p=1.0,
                         seed=42,
                     )
                 except (openai.OpenAIError, httpx.HTTPError) as e:

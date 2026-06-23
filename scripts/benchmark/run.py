@@ -449,6 +449,7 @@ def _run_family(args: dict) -> dict:
     max_questions = args["max_questions"]
     rerank_modes = args.get("rerank_modes") or RERANK_MODES_DEFAULT
     k_values = list(args.get("k_values") or K_VALUES)
+    reset_caches = bool(args.get("reset_caches", True))
 
     from src.NLSeeker.engine import reset_engine_cache, _NLEngine
     from src.NLSeeker.llm import reset_backend_cache
@@ -458,8 +459,9 @@ def _run_family(args: dict) -> dict:
     from scripts.benchmark._judge_timer import JUDGE_TIMER
     from scripts.benchmark.metrics import hit_at_k, recall_at_k, reciprocal_rank
 
-    reset_engine_cache()
-    reset_backend_cache()
+    if reset_caches:
+        reset_engine_cache()
+        reset_backend_cache()
     seed_all(42)  # D17
 
     manifest = load_manifest(lake_dir)
@@ -614,8 +616,6 @@ def run_benchmark(
     """End-to-end run for one prepared+indexed dataset.
 
     Runs all families sequentially in a single Python process (Phase 8.1).
-    Each family call uses reset_engine_cache/reset_backend_cache to reproduce
-    the spawn-isolation contract without subprocesses.
     Returns the results directory it wrote to.
     """
     from src.NLSeeker.engine import reset_engine_cache
@@ -665,15 +665,9 @@ def run_benchmark(
     ]
 
     t_run0 = time.perf_counter()
-    # Sequential families: PNEUMA-shape parity. Single Python process; one
-    # vLLM container in-flight at a time. reset_engine_cache /
-    # reset_backend_cache between families reproduce the spawn-isolation
-    # contract in-process.
     family_results = []
-    for args in worker_args:
-        reset_engine_cache()
-        reset_backend_cache()
-        seed_all(42)                  # D17 - also pinned at family startup
+    for i, args in enumerate(worker_args):
+        args = {**args, "reset_caches": (i == 0)}
         family_results.append(_run_family(args))
     run_wall = time.perf_counter() - t_run0
 
