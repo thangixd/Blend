@@ -40,6 +40,46 @@ class NLSeekerConfig:
     default_k: int = 10
     max_llm_batch_size: int = 50
 
+
+    enabled_summary_types: frozenset = field(
+        default_factory=lambda: frozenset({"COLUMN_NARRATION", "ROW_SAMPLE"})
+    )
+    context_sources: frozenset = field(default_factory=lambda: frozenset({"real"}))
+
+    generate_content_profile: bool = True
+    generate_semantic_profile: bool = True
+    generate_topic: bool = True
+    generate_ufd: bool = True
+    generate_sfd: bool = True
+    generate_narration_profiled: bool = True
+
+    topic_into_ufd_sfd: bool = True
+    index_topic_standalone: bool = False
+    semantic_profile_group_size: int = 0
+    force_regenerate: bool = False
+
+    def __post_init__(self) -> None:
+        # Lazy import to avoid db_schema <-> config cycle.
+        from src.NLSeeker.db_schema import SummaryType
+
+        coerced = frozenset(
+            v if isinstance(v, SummaryType) else SummaryType(v)
+            for v in self.enabled_summary_types
+        )
+        # frozen dataclass: route through object.__setattr__.
+        object.__setattr__(self, "enabled_summary_types", coerced)
+        object.__setattr__(self, "context_sources", frozenset(self.context_sources))
+
+    @property
+    def enabled_summary_types_sig(self) -> tuple:
+        """Stable sorted tuple of enum values for use in signature(); frozenset repr is order-unstable."""
+        return tuple(sorted(st.value for st in self.enabled_summary_types))
+
+    @property
+    def context_sources_sig(self) -> tuple:
+        """Stable sorted tuple of source strings for use in signature(); frozenset repr is order-unstable."""
+        return tuple(sorted(self.context_sources))
+
     @classmethod
     def load(cls, config_path: Path = None, overrides: Mapping[str, Any] = None) -> "NLSeekerConfig":
         """Load defaults, then layer values from the ini file and ``overrides``."""
@@ -94,6 +134,22 @@ class NLSeekerConfig:
                 "n",
                 "default_k",
                 "max_llm_batch_size",
+                # AutoDDG identity-affecting fields.
+                # NOTE: frozenset repr is order-unstable across Python builds;
+                # we sort to stabilize the signature.
+                "enabled_summary_types_sig",
+                "context_sources_sig",
+                "generate_content_profile",
+                "generate_semantic_profile",
+                "generate_topic",
+                "generate_ufd",
+                "generate_sfd",
+                "generate_narration_profiled",
+                "topic_into_ufd_sfd",
+                "index_topic_standalone",
+                "semantic_profile_group_size",
+                # force_regenerate is deliberately omitted - it's a transient flag,
+                # not part of engine identity.
             )
         )
         return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
@@ -117,6 +173,13 @@ class NLSeekerConfig:
                 kwargs[name] = float(value)
             elif target is Path or target == "Path":
                 kwargs[name] = Path(str(value)).expanduser()
+            elif name in {"enabled_summary_types", "context_sources"}:
+                # Accept comma-separated strings (ini) or iterables (overrides dict).
+                if isinstance(value, str):
+                    items = {v.strip() for v in value.split(",") if v.strip()}
+                else:
+                    items = set(value)
+                kwargs[name] = frozenset(items)
             else:
                 kwargs[name] = str(value)
         return replace(self, **kwargs)

@@ -20,7 +20,7 @@ services:
       - ./EvaluationDataFromPneuma:/app/EvaluationDataFromPneuma:ro
       - ./Makefile:/app/Makefile:ro
       # Mount the vendored PNEUMA source so pneuma_patches' sys.path
-      # splicing finds it inside the container.  Read-only — patches at
+      # splicing finds it inside the container.  Read-only - patches at
       # runtime, never edits the source.
       - ./pneuma:/app/pneuma:ro
       # Mount the bench-side scripts so we don't need a rebuild to pick up

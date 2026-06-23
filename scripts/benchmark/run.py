@@ -167,7 +167,7 @@ class PerQueryRecord:
     rr: float
     latency_ms: float
     vector_ms: float | None = None
-    # Judge timing — populated when rerank_mode=="on", zeros when "off".
+    # Judge timing - populated when rerank_mode=="on", zeros when "off".
     judge_ms: float = 0.0
     judge_calls: int = 0
     judge_tokens_in: int = 0
@@ -383,8 +383,8 @@ def _build_run_meta(*, dataset, endpoints, gpu, n_questions,
         # the PNEUMA bench's ``run_meta.json``: both sides now expose the
         # same field name so ``compare_v2`` can pivot panels by it without
         # special-casing.  Value space:
-        #   ``brute_force_exact``    — Blend NLSeeker (this side)
-        #   ``chromadb_hnsw_M48``    — PNEUMA bench
+        #   ``brute_force_exact``    - Blend NLSeeker (this side)
+        #   ``chromadb_hnsw_M48``    - PNEUMA bench
         "vector_index_kind": "brute_force_exact",
         "context_source": "contexts_<ds>_merged.jsonl",
         "context_blocking": "one-merged-record-per-chunk",
@@ -712,10 +712,185 @@ def run_benchmark(
     return run_dir
 
 
+def _build_cli_parser() -> "argparse.ArgumentParser":
+    """Build the argparse parser for benchmark/run.py.
+
+    Used by ``main()`` and also exposed via ``__all__`` for tests and
+    external callers. The parser declares all flags needed to run one
+    ablation cell against one dataset.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="scripts.benchmark.run",
+        description="Run the Blend NLSeeker benchmark for one prepared+indexed dataset.",
+    )
+    parser.add_argument("--dataset", required=True,
+                        help="Dataset name (e.g. chembl, public_bi).")
+    parser.add_argument(
+        "--cell",
+        default=None,
+        help="Ablation cell key (spec §5). When set and --index-name is not given, "
+             "the index name is derived as 'benchmark_autoddg_<dataset>_<cell>'.",
+    )
+    parser.add_argument("--index-name", default=None, dest="index_name",
+                        help="Explicit index name. Overrides the --cell-derived name.")
+    parser.add_argument("--questions", default=None,
+                        help="Path to the content JSONL file with benchmark questions.")
+    parser.add_argument("--lake-dir", default=None, dest="lake_dir",
+                        help="Path to the prepared lake directory (resolves BX questions and "
+                             "manifest; default: benchmark-data/lakes/<dataset>).")
+    parser.add_argument("--out", default=None,
+                        help="Results output directory (run_dir).")
+    parser.add_argument("--max-questions", type=int, default=None, dest="max_questions",
+                        help="Cap on number of questions per family (debugging).")
+    parser.add_argument("--families", default=None,
+                        help="Comma-separated list of families to run (default: all).")
+    parser.add_argument("--rerank-modes", default=None, dest="rerank_modes",
+                        help="Comma-separated rerank modes (default: off,on).")
+    parser.add_argument("--k-values", default=None, dest="k_values",
+                        help="Comma-separated k values (default: 1,5,10,30,50).")
+    parser.add_argument(
+        "--config",
+        default=None,
+        dest="config_path",
+        help=(
+            "Path to per-run config.ini "
+            "(e.g. benchmark-data/indexes/autoddg/<base>/<cell>/config.ini). "
+            "When omitted, the runner inherits config/config.ini at project root."
+        ),
+    )
+    return parser
+
+
+def _evaluate(args: dict) -> None:
+    """Dispatch the benchmark run from a resolved args dict.
+
+    Separated from ``main()`` so tests can monkeypatch this name without
+    touching the argparse layer.  The ``args`` dict mirrors the resolved
+    namespace produced by ``_build_cli_parser``:
+
+    ``index_name``, ``dataset``, ``questions``, ``lake_dir``, ``out``,
+    ``max_questions``, ``families``, ``rerank_modes``, ``k_values``.
+    """
+    from pathlib import Path
+
+    questions_path = Path(args["questions"]) if args.get("questions") else None
+    out_dir = Path(args["out"]) if args.get("out") else None
+
+    # Resolve config_path: explicit --config wins; None means default project config.
+    config_path = Path(args["config_path"]) if args.get("config_path") else None
+
+    # Auto-compute autoddg results dir when --out not given and --cell was set.
+    if out_dir is None and args.get("cell"):
+        _project_root = Path(__file__).resolve().parents[2]
+        _ts = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        out_dir = (
+            _project_root
+            / "benchmark-data"
+            / "results"
+            / "autoddg"
+            / args["dataset"]
+            / args["cell"]
+            / _ts
+        )
+
+    # Resolve lake_dir: explicit > auto-derived from benchmark-data/lakes/<dataset>.
+    if args.get("lake_dir"):
+        lake_dir: Path | None = Path(args["lake_dir"])
+    else:
+        _project_root = Path(__file__).resolve().parents[2]
+        _candidate = _project_root / "benchmark-data" / "lakes" / args["dataset"]
+        lake_dir = _candidate if _candidate.is_dir() else None
+
+    families_arg = args.get("families")
+    families = (
+        tuple(f.strip() for f in families_arg.split(",") if f.strip())
+        if families_arg
+        else None
+    )
+    rerank_arg = args.get("rerank_modes")
+    rerank_modes = (
+        tuple(r.strip() for r in rerank_arg.split(",") if r.strip())
+        if rerank_arg
+        else None
+    )
+    k_arg = args.get("k_values")
+    k_values = (
+        tuple(int(k.strip()) for k in k_arg.split(",") if k.strip())
+        if k_arg
+        else None
+    )
+
+    run_benchmark(
+        dataset=args["dataset"],
+        lake_dir=lake_dir,
+        config_path=config_path,
+        index_name=args.get("index_name"),
+        content_jsonl=questions_path,
+        run_dir=out_dir,
+        results_dir=Path(__file__).resolve().parents[2] / "results" if out_dir is None else None,
+        max_questions=args.get("max_questions"),
+        families=families,
+        rerank_modes=rerank_modes,
+        k_values=k_values,
+    )
+
+
+def main(argv: list[str] | None = None) -> None:
+    """CLI entry point for ``scripts/benchmark/run.py``.
+
+    Usage example::
+
+        python -m scripts.benchmark.run \\
+            --dataset chembl \\
+            --cell B8 \\
+            --config benchmark-data/indexes/autoddg/chembl/B8/config.ini \\
+            --questions /data/chembl/content.jsonl
+
+    When ``--cell`` is given and ``--index-name`` is not, the index name
+    is derived as ``benchmark_autoddg_<dataset>_<cell>``.
+    """
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s | %(message)s",
+    )
+    parser = _build_cli_parser()
+    ns = parser.parse_args(argv)
+
+    # Resolve --cell → index_name (spec §3.5 / §7.1).
+    if ns.cell:
+        if not ns.index_name:
+            ns.index_name = f"benchmark_autoddg_{ns.dataset}_{ns.cell}"
+
+    args = {
+        "dataset": ns.dataset,
+        "cell": ns.cell,
+        # Note: 'cell' is resolved above into index_name; it is forwarded
+        # so _evaluate() can compute the autoddg results dir.
+        "index_name": ns.index_name,
+        "questions": ns.questions,
+        "lake_dir": ns.lake_dir,
+        "out": ns.out,
+        "config_path": ns.config_path,
+        "max_questions": ns.max_questions,
+        "families": ns.families,
+        "rerank_modes": ns.rerank_modes,
+        "k_values": ns.k_values,
+    }
+    _evaluate(args)
+
+
 __all__ = [
     "Manifest", "Question", "load_manifest", "load_questions",
     "PerQueryRecord", "SummaryRow",
     "write_per_query_jsonl", "write_summary_csv", "write_pneuma_compat_jsonl",
     "aggregate_summary",
     "K_VALUES", "N", "ALPHA", "FAMILIES", "RERANK_MODES_DEFAULT", "run_benchmark",
+    "_evaluate", "_build_cli_parser", "main",
 ]
+
+if __name__ == "__main__":
+    main()

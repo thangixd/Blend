@@ -8,7 +8,9 @@ COMPOSE ?= docker compose
         benchmark-test benchmark-test-vllm \
         build up down shell bench logs \
         pneuma-bench pneuma-bench-all pneuma-delete-benchdata \
-        pneuma-bench-container
+        pneuma-bench-container \
+        bench-autoddg-generate bench-autoddg-chembl clean-autoddg-indexes \
+        bench-autoddg-container bench-autoddg-generate-container bench-autoddg-all-container
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -136,6 +138,19 @@ bench:  ## Run `make benchmark-all` inside the container (results land in benchm
 pneuma-bench-container:  ## Run `make pneuma-bench-all` inside the container (results land in pneumaBenchdata/ on the host).
 	$(COMPOSE) exec blend make pneuma-bench-all
 
+bench-autoddg-container:  ## Run `make bench-autoddg` inside the container for AUTODDG_DATASET (passes AUTODDG_CELLS through). Default base: chembl.
+	$(COMPOSE) exec blend make bench-autoddg \
+	    AUTODDG_DATASET=$(AUTODDG_DATASET) \
+	    AUTODDG_CELLS="$(AUTODDG_CELLS)"
+
+bench-autoddg-generate-container:  ## Run `make bench-autoddg-generate` inside the container for AUTODDG_DATASET (no index built).
+	$(COMPOSE) exec blend make bench-autoddg-generate \
+	    AUTODDG_DATASET=$(AUTODDG_DATASET)
+
+bench-autoddg-all-container:  ## Run `make bench-autoddg-all` inside the container (loops every supported base dataset).
+	$(COMPOSE) exec blend make bench-autoddg-all \
+	    AUTODDG_CELLS="$(AUTODDG_CELLS)"
+
 logs:  ## Tail the blend container's logs.
 	$(COMPOSE) logs -f blend
 
@@ -171,7 +186,7 @@ pneuma-bench-all:  ## Run pneuma-bench over every PNEUMA_BENCHMARK_DATASETS, the
 pneuma-delete-benchdata:  ## Drop pneumaBenchdata/{lakes,indexes,results}/ via the container (root-owned bind-mount).
 	@# The container runs as root, so the bind-mounted pneumaBenchdata/ is
 	@# root-owned on the host and a host-side `rm` would fail with EPERM.
-	@# Route the rm through the container — exec if it's already up, else
+	@# Route the rm through the container - exec if it's already up, else
 	@# `run --rm` to spin one up just for the cleanup. Don't try to remove
 	@# the bind-mount root itself (`/app/pneumaBenchdata`); only its
 	@# subdirectories, which is what the docstring promises anyway.
@@ -182,3 +197,53 @@ pneuma-delete-benchdata:  ## Drop pneumaBenchdata/{lakes,indexes,results}/ via t
 	  echo "  → blend container not running, using one-shot run --rm"; \
 	  $(COMPOSE) run --rm -T blend rm -rf pneumaBenchdata/lakes pneumaBenchdata/indexes pneumaBenchdata/results; \
 	fi
+
+# ---- AutoDDG ablation sweep (spec §5 cells / §7.2 plumbing) ----
+AUTODDG_CELLS ?= B0 B0nctx B1 B2 B3 B4 B5 B6 B7 B8 B8-r1 B10-r1 B11 B12
+AUTODDG_DATASET ?= chembl
+AUTODDG_LAKE_DIR ?= benchmark-data/lakes/$(AUTODDG_DATASET)
+AUTODDG_INDEX_ROOT ?= benchmark-data/indexes/autoddg/$(AUTODDG_DATASET)
+AUTODDG_RESULTS_ROOT ?= benchmark-data/results/autoddg/$(AUTODDG_DATASET)
+# Per-base default BC questions; override on the CLI if your file name differs.
+AUTODDG_QUESTIONS_chembl       ?= EvaluationDataFromPneuma/pneuma_chembl_10K_questions_annotated.jsonl
+AUTODDG_QUESTIONS_fetaqa       ?= EvaluationDataFromPneuma/pneuma_fetaqa_questions_annotated.jsonl
+AUTODDG_QUESTIONS_public_bi    ?= EvaluationDataFromPneuma/pneuma_public_bi_questions_annotated.jsonl
+AUTODDG_QUESTIONS_chicago_open ?= EvaluationDataFromPneuma/pneuma_chicago_open_questions_annotated.jsonl
+AUTODDG_QUESTIONS ?= $(AUTODDG_QUESTIONS_$(AUTODDG_DATASET))
+
+bench-autoddg-generate:  ## Run AutoDDG artifact generation for AUTODDG_DATASET (no index built).
+	$(PYTHON) -m scripts.benchmark.autoddg_cli generate \
+	    --base $(AUTODDG_DATASET) --lake-dir $(AUTODDG_LAKE_DIR)
+
+bench-autoddg: bench-autoddg-generate  ## Generate + index + eval all AUTODDG_CELLS for AUTODDG_DATASET.
+	@for cell in $(AUTODDG_CELLS); do \
+	    echo "==== building $(AUTODDG_DATASET)/$$cell ===="; \
+	    $(PYTHON) -m scripts.benchmark.autoddg_cli build-cell \
+	        --base $(AUTODDG_DATASET) --cell $$cell --lake-dir $(AUTODDG_LAKE_DIR) || exit 1; \
+	    echo "==== evaluating $(AUTODDG_DATASET)/$$cell ===="; \
+	    PYTHONHASHSEED=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
+	    $(PYTHON) -m scripts.benchmark.run \
+	        --dataset $(AUTODDG_DATASET) \
+	        --cell $$cell \
+	        --config $(AUTODDG_INDEX_ROOT)/$$cell/config.ini \
+	        $(if $(AUTODDG_QUESTIONS),--questions $(AUTODDG_QUESTIONS),) \
+	        --lake-dir $(AUTODDG_LAKE_DIR) || exit 1; \
+	done
+	$(PYTHON) -m scripts.benchmark.plot_autoddg --results-dir $(AUTODDG_RESULTS_ROOT)
+
+# Per-dataset aliases - one line each, easy to extend.
+bench-autoddg-chembl:        ## AutoDDG ablation sweep on chembl.
+	@$(MAKE) bench-autoddg AUTODDG_DATASET=chembl
+bench-autoddg-fetaqa:        ## AutoDDG ablation sweep on fetaqa.
+	@$(MAKE) bench-autoddg AUTODDG_DATASET=fetaqa
+bench-autoddg-public-bi:     ## AutoDDG ablation sweep on public_bi.
+	@$(MAKE) bench-autoddg AUTODDG_DATASET=public_bi
+bench-autoddg-chicago-open:  ## AutoDDG ablation sweep on chicago_open.
+	@$(MAKE) bench-autoddg AUTODDG_DATASET=chicago_open
+
+bench-autoddg-all: bench-autoddg-chembl bench-autoddg-fetaqa bench-autoddg-public-bi bench-autoddg-chicago-open
+
+clean-autoddg-indexes:        ## Remove autoddg indexes for AUTODDG_DATASET only.
+	rm -rf $(AUTODDG_INDEX_ROOT)
+clean-autoddg-indexes-all:    ## Remove autoddg indexes for every dataset.
+	rm -rf benchmark-data/indexes/autoddg

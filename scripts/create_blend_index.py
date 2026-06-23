@@ -489,6 +489,66 @@ def run_pipeline(
 
 
 
+def _run_generation_only(
+    *,
+    lake_path: str,
+    config_path: Path,
+    metadata_path: Optional[Path],
+    nl_config_overrides: Optional[dict],
+) -> None:
+    """Run NLArtifactBuilder for every file in the lake without building any per-cell index.
+
+    This is the --generate-only path: warm all AutoDDG artifact tables once;
+    subsequent --cell runs can then build per-cell indexes from the stored rows.
+    """
+    from src.NLSeeker.autoddg.artifact_builder import NLArtifactBuilder
+    from src.NLSeeker.db_schema import ensure_schema
+    from src.NLSeeker.llm import build_backends
+
+    nl_cfg = NLSeekerConfig.load(config_path=config_path, overrides=nl_config_overrides)
+    llm, _embedder = build_backends(nl_cfg)
+    files = _iter_lake(lake_path)
+    if not files:
+        raise SystemExit(f"No files matched lake pattern {lake_path!r}")
+
+    contexts_by_tid: dict[int, list[str]] = {}
+    if metadata_path is not None:
+        contexts_by_tid = _read_metadata_csv(metadata_path)
+
+    db_cfg = _read_db_section(config_path)
+    con, cursor, dbms = _open_writer(db_cfg)
+    try:
+        ensure_schema(cursor, dbms)
+        builder = NLArtifactBuilder(cfg=nl_cfg, llm=llm, cursor=cursor, dbms=dbms)
+        for table_id, file_path in tqdm(files, desc="Generating artifacts"):
+            df = pd.read_csv(file_path, low_memory=False)
+            builder.generate_table(
+                table_id=table_id,
+                filename=file_path.name,
+                df=df,
+                real_contexts=contexts_by_tid.get(table_id, []),
+            )
+            LOG.info("Generated artifacts for TableId=%d (%s)", table_id, file_path.name)
+        if dbms == "duckdb":
+            cursor.execute("COMMIT")
+        else:
+            con.commit()
+    except BaseException:
+        try:
+            if dbms == "duckdb":
+                cursor.execute("ROLLBACK")
+            else:
+                con.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        cursor.close()
+        con.close()
+
+    LOG.info("Generation sweep complete across %d tables.", len(files))
+
+
 # CLI
 
 def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
@@ -545,6 +605,19 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--cell",
+        default=None,
+        help="Ablation cell key (spec §5). Resolved via scripts.benchmark.cells.CELL_PRESETS.",
+    )
+    parser.add_argument(
+        "--generate-only",
+        action="store_true",
+        help=(
+            "Run the AutoDDG generation sweep (NLArtifactBuilder) without building any per-cell index. "
+            "Use this once first, then run with --cell <key> to build per-cell indexes from the stored artifacts."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
@@ -566,10 +639,28 @@ def main(argv: Optional[list[str]] = None) -> None:
     # does not exist still raises inside _read_metadata_csv.
     if metadata_path == _DEFAULT_METADATA and not metadata_path.exists():
         metadata_path = None
+
+    nl_config_overrides: Optional[dict] = None
+    if args.cell:
+        from scripts.benchmark.cells import preset_for_cell
+        nl_config_overrides = preset_for_cell(args.cell)
+        # Suffix the index name so cells coexist on disk (spec §3.5).
+        nl_config_overrides.setdefault("index_name", f"blend_nl_index_{args.cell}")
+
+    if args.generate_only:
+        _run_generation_only(
+            lake_path=args.lake,
+            config_path=args.config,
+            metadata_path=metadata_path,
+            nl_config_overrides=nl_config_overrides,
+        )
+        return
+
     run_pipeline(
         lake_path=args.lake,
         config_path=args.config,
         nl_index=args.nl_index,
+        nl_config_overrides=nl_config_overrides,
         metadata_path=metadata_path if args.nl_index else None,
         workers=args.workers,
         value_index=args.value_index,

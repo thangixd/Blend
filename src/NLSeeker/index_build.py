@@ -49,10 +49,17 @@ class IndexBuildResult:
     total_tables: int
 
 
-def make_doc_id(table_id: int, kind: str, index: int) -> str:
-    """Build a doc id of the form ``<tid>_SEP_contents_SEP_<kind>-<i>`` (or ``<tid>_SEP_contexts-<i>``)."""
+def make_doc_id(table_id: int, kind: str, index: int, *, source: str = "real") -> str:
+    """Build a doc id.
+
+    - Contents (column narrations / row samples): ``<tid>_SEP_contents_SEP_<kind>-<i>``.
+    - Contexts: ``<tid>_SEP_contexts-<source>-<i>`` (spec §3.1).
+
+    The substring ``_SEP_contexts-`` is preserved so retrieve.py routes to
+    the context-rerank prompt for both real and synthetic contexts.
+    """
     if kind == "contexts":
-        return f"{table_id}{DOC_ID_SEP}contexts-{index}"
+        return f"{table_id}{DOC_ID_SEP}contexts-{source}-{index}"
     return f"{table_id}{DOC_ID_SEP}contents{DOC_ID_SEP}{kind}-{index}"
 
 
@@ -75,14 +82,30 @@ class _TableDocuments:
     triples: list
 
 
-def _flatten_summary(summary: SummarizedTable) -> _TableDocuments:
+def _flatten_summary(
+    summary: SummarizedTable, context_source: str = "real"
+) -> _TableDocuments:
+    """Flatten a SummarizedTable into (doc_id, text, SummaryType) triples.
+
+    ``context_source`` is the Source tag written into context doc ids. 
+    Defaults to ``"real"`` for backward compatibility with
+    the ``add_table`` call path.
+
+    Note: this function serves the ``add_table`` path and emits all summary
+    types unconditionally. Cell-aware filtering by ``enabled_summary_types``
+    happens in ``run()``.
+    """
     triples = []
     for i, block in enumerate(summary.column_narration_blocks):
         triples.append((make_doc_id(summary.table_id, "schema", i), block, SummaryType.COLUMN_NARRATION))
     for i, block in enumerate(summary.row_sample_blocks):
         triples.append((make_doc_id(summary.table_id, "row", i), block, SummaryType.ROW_SAMPLE))
     for i, block in enumerate(summary.context_blocks):
-        triples.append((make_doc_id(summary.table_id, "contexts", i), block, SummaryType.CONTEXT))
+        triples.append((
+            make_doc_id(summary.table_id, "contexts", i, source=context_source),
+            block,
+            SummaryType.CONTEXT,
+        ))
     return _TableDocuments(table_id=summary.table_id, triples=triples)
 
 
@@ -266,6 +289,169 @@ class NLIndexBuilder:
         return result
 
 
+    @classmethod
+    def from_storage(
+        cls,
+        *,
+        cfg: NLSeekerConfig,
+        duckdb_path: str,
+        embedder,
+        llm=None,
+    ) -> "NLIndexBuilder":
+        """Construct a builder whose data source is an existing DuckDB.
+
+        Use ``builder.run()`` to build the cell-specific Chroma + BM25s
+        indexes from the filtered subset defined by ``cfg.enabled_summary_types``
+        and ``cfg.context_sources`` (spec §4.2).
+        """
+        builder = cls(cfg=cfg, llm=llm or _NoopLLM(), embedder=embedder)
+        builder._duckdb_path = duckdb_path  # type: ignore[attr-defined]
+        return builder
+
+    def staged_doc_ids(self) -> list[str]:
+        """Return doc IDs collected by the last ``run()`` call. Useful in tests."""
+        return [t[0] for t in getattr(self, "_collected_triples", [])]
+
+    def staged_doc_id_kinds(self) -> list[str]:
+        """Return the *kind* segment of each staged doc id (for test assertions)."""
+        kinds: list = []
+        for did in self.staged_doc_ids():
+            try:
+                _, kind, _ = parse_doc_id(did)
+                kinds.append(kind)
+            except Exception:
+                kinds.append("?")
+        return kinds
+
+    def run(self) -> "IndexBuildResult":
+        """Build a cell-aware index end-to-end from storage.
+
+        Reads rows filtered by ``cfg.enabled_summary_types`` and
+        ``cfg.context_sources`` from the source DuckDB (set via
+        ``from_storage``), embeds them, persists Chroma + BM25s under the
+        cell-specific ``cfg.index_name``, and returns the result.
+        """
+        import duckdb as _duckdb
+
+        from src.NLSeeker.db_schema import fetch_table_summaries
+
+        duckdb_path = getattr(self, "_duckdb_path", None)
+        if duckdb_path is None:
+            raise RuntimeError(
+                "NLIndexBuilder.run() requires a source DB. "
+                "Construct via NLIndexBuilder.from_storage(...)."
+            )
+
+        # --- load filtered rows from storage ---
+        con = _duckdb.connect(duckdb_path, read_only=True)
+        cur = con.cursor()
+        try:
+            summaries = fetch_table_summaries(cur, "duckdb")
+            # Discover which tables have contexts under this cell's source filter.
+            # We only need the set of TableIds; per-table text is re-fetched below
+            # to preserve the (source, idx) pairs needed for doc-id construction.
+            if self.cfg.context_sources:
+                placeholders = ",".join("?" for _ in self.cfg.context_sources)
+                cur.execute(
+                    f"SELECT DISTINCT TableId FROM blend_nl_contexts WHERE Source IN ({placeholders})",
+                    tuple(self.cfg.context_sources),
+                )
+                ctx_tids = {int(row[0]) for row in cur.fetchall()}
+            else:
+                ctx_tids = set()
+            contexts = {tid: True for tid in ctx_tids}  # values unused; keys used for union
+        finally:
+            cur.close()
+            con.close()
+
+        self.start()
+        self._collected_triples: list = []
+
+        all_tables = set(summaries.keys()) | set(contexts.keys())
+        for tid in sorted(all_tables):
+            per_type = summaries.get(tid, {})
+            triples: list = []
+
+            # --- content-side: summaries filtered by enabled_summary_types ---
+            for st in self.cfg.enabled_summary_types:
+                blocks = per_type.get(st, [])
+                kind = (
+                    "schema"
+                    if st in (SummaryType.COLUMN_NARRATION, SummaryType.COLUMN_NARRATION_PROFILED)
+                    else "row"
+                )
+                for i, txt in enumerate(blocks):
+                    triples.append((make_doc_id(tid, kind, i), txt, st))
+
+            # --- context-side: per-source doc ids from storage ---
+            if self.cfg.context_sources:
+                # Fresh read-only connection per table: DuckDB allows concurrent readers;
+                # no write lock is held since both the outer and inner connections are read_only=True.
+                ctx_con = _duckdb.connect(duckdb_path, read_only=True)
+                ctx_cur = ctx_con.cursor()
+                try:
+                    sources_list = list(self.cfg.context_sources)
+                    placeholders = ",".join("?" for _ in sources_list)
+                    ctx_cur.execute(
+                        f"SELECT Source, ContextIdx, Text FROM blend_nl_contexts "
+                        f"WHERE TableId=? AND Source IN ({placeholders}) "
+                        f"ORDER BY Source, ContextIdx",
+                        (int(tid), *sources_list),
+                    )
+                    for src, idx, text in ctx_cur.fetchall():
+                        triples.append(
+                            (
+                                make_doc_id(tid, "contexts", int(idx), source=src),
+                                text,
+                                SummaryType.CONTEXT,
+                            )
+                        )
+                finally:
+                    ctx_cur.close()
+                    ctx_con.close()
+
+            if not triples:
+                LOG.warning(
+                    "TableId=%d produced no documents for this cell; skipping.", tid
+                )
+                continue
+
+            self._collected_triples.extend(triples)
+
+            ids = [t[0] for t in triples]
+            texts = [t[1] for t in triples]
+            embeddings = self.embedder.encode(texts)
+
+            metadatas = [{"table_id": str(tid), "kind": kind_for_doc(d)} for d in ids]
+            self._collection.add(
+                ids=ids,
+                embeddings=embeddings.tolist(),
+                documents=texts,
+                metadatas=metadatas,
+            )
+            for doc_id, text, _ in triples:
+                self._bm25_texts.append(text)
+                self._bm25_corpus.append({"text": text, "doc_id": doc_id, "table_id": tid})
+
+            self._documents_total += len(triples)
+            self._tables_total += 1
+
+        return self.finalize()
+
+
+class _NoopLLM:
+    """Placeholder LLM backend for ``from_storage`` builds.
+
+    No generation happens in the indexing phase; this sentinel satisfies the
+    constructor signature without requiring a real backend.
+    """
+
+    max_input_tokens = 1
+
+    def generate(self, prompts, max_new_tokens, *, concurrency=None):
+        return [""] * len(prompts)
+
+
 def kind_for_doc(doc_id: str) -> str:
     _, kind, _ = parse_doc_id(doc_id)
     return kind
@@ -300,7 +486,9 @@ __all__ = [
     "DOC_ID_SEP",
     "IndexBuildResult",
     "NLIndexBuilder",
+    "_NoopLLM",
     "build_index",
+    "kind_for_doc",
     "make_doc_id",
     "parse_doc_id",
 ]

@@ -6,11 +6,11 @@ Blend's number next to PNEUMA's published number, with a Δ pp column
 and a paragraph describing what the experiment is.
 
 Sections:
-  - Fig. 6  (§7.1.1) — Overall hit rate, full pipeline, k ∈ {1, 5}.
-  - Table 2 (§7.3.2) — Hybrid retrieval (no judge), per lane, k=1.
-  - Fig. 13 (§7.3.3) — LLM Judge uplift over hybrid, per lane.
-  - Fig. 15 (§7.4.2) — k-sweep ablation, hybrid (no judge), per lane.
-  - Fig. 9  (§7.2.1) — Online query throughput on FeTaQA.
+  - Fig. 6  (§7.1.1) - Overall hit rate, full pipeline, k ∈ {1, 5}.
+  - Table 2 (§7.3.2) - Hybrid retrieval (no judge), per lane, k=1.
+  - Fig. 13 (§7.3.3) - LLM Judge uplift over hybrid, per lane.
+  - Fig. 15 (§7.4.2) - k-sweep ablation, hybrid (no judge), per lane.
+  - Fig. 9  (§7.2.1) - Online query throughput on FeTaQA.
 """
 
 from __future__ import annotations
@@ -25,21 +25,21 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class PaperRef:
-    # Fig. 6 (§7.1.1) — full PNEUMA, weighted BC2+BX2, k ∈ {1, 5}.
+    # Fig. 6 (§7.1.1) - full PNEUMA, weighted BC2+BX2, k ∈ {1, 5}.
     mixed_k1: float | None
     mixed_k5: float | None
-    # Table 2 (§7.3.2) — Hybrid Retrieval, no judge, k=1, per lane.
+    # Table 2 (§7.3.2) - Hybrid Retrieval, no judge, k=1, per lane.
     content_k1: float | None
     context_k1: float | None
-    # Fig. 13 (§7.3.3) — LLM Judge (Qwen) bars, per lane, k=1. Bar-chart only;
+    # Fig. 13 (§7.3.3) - LLM Judge (Qwen) bars, per lane, k=1. Bar-chart only;
     # values estimated from the figure to the nearest pp.
     fig13_content_k1_qwen: float | None
     fig13_context_k1_qwen: float | None
-    # Fig. 15 (§7.4.2) — k-sweep, hybrid no judge, per lane. Bar-chart only;
+    # Fig. 15 (§7.4.2) - k-sweep, hybrid no judge, per lane. Bar-chart only;
     # estimated from the figure.
     fig15_content_k: dict[int, float] | None
     fig15_context_k: dict[int, float] | None
-    # Fig. 9 (§7.2.1) — Online query throughput at full FeTaQA size (10330
+    # Fig. 9 (§7.2.1) - Online query throughput at full FeTaQA size (10330
     # tables), full pipeline. Reported only for FeTaQA.
     fig9_qps: float | None
 
@@ -167,13 +167,13 @@ def _section(title: str, what: list[str]) -> None:
 def _print_intro() -> None:
     print()
     print("#" * 100)
-    print("# Blend ↔ PNEUMA — side-by-side comparison, one section per paper figure")
+    print("# Blend ↔ PNEUMA - side-by-side comparison, one section per paper figure")
     print("#" * 100)
     print(
         "Datasets: ChEMBL, Adventure Works, Public BI, Chicago Open, FeTaQA.\n"
         "PNEUMA splits questions into two lanes:\n"
-        "  - content (BC) — answerable from columns + sampled rows.\n"
-        "  - context (BX) — answerable only from an LLM-generated table description.\n"
+        "  - content (BC) - answerable from columns + sampled rows.\n"
+        "  - context (BX) - answerable only from an LLM-generated table description.\n"
         "Each section: paper figure name → what the experiment did → a table with\n"
         "Blend's number next to PNEUMA's published number, plus Δ pp = (Blend − PNEUMA).\n"
         "'---' means the paper does not publish a comparable for that cell."
@@ -182,7 +182,7 @@ def _print_intro() -> None:
 
 def _print_fig6(rows_by_ds: dict[str, list[dict]]) -> None:
     _section(
-        "§ Fig. 6 — Overall Hit Rate at k ∈ {1, 5}   (paper §7.1.1)",
+        "§ Fig. 6 - Overall Hit Rate at k ∈ {1, 5}   (paper §7.1.1)",
         [
             "Run the FULL PNEUMA pipeline (BM25 ⊕ vector retrieval ⊕ LLM judge) on",
             "every question in both lanes, count the % that have at least one relevant",
@@ -224,12 +224,12 @@ def _print_fig6(rows_by_ds: dict[str, list[dict]]) -> None:
         )
         any_data = True
     if not any_data:
-        print("(no data — run `make benchmark DATASET=<ds>`)")
+        print("(no data - run `make benchmark DATASET=<ds>`)")
 
 
 def _print_table2(rows_by_ds: dict[str, list[dict]]) -> None:
     _section(
-        "§ Table 2 — Hybrid Retrieval (no judge), per lane, k=1   (paper §7.3.2)",
+        "§ Table 2 - Hybrid Retrieval (no judge), per lane, k=1   (paper §7.3.2)",
         [
             "Same retriever as Fig. 6 (BM25 ⊕ vector fusion at k=1, n=5, α=0.5) but with",
             "the LLM judge OFF, to isolate retrieval-engine quality from judge quality.",
@@ -266,12 +266,12 @@ def _print_table2(rows_by_ds: dict[str, list[dict]]) -> None:
         )
         any_data = True
     if not any_data:
-        print("(no data — run `make benchmark DATASET=<ds>`)")
+        print("(no data - run `make benchmark DATASET=<ds>`)")
 
 
 def _print_fig13(rows_by_ds: dict[str, list[dict]]) -> None:
     _section(
-        "§ Fig. 13 — LLM Judge uplift over hybrid retrieval, per lane, k=1   (paper §7.3.3)",
+        "§ Fig. 13 - LLM Judge uplift over hybrid retrieval, per lane, k=1   (paper §7.3.3)",
         [
             "How many percentage points does the LLM judge add on top of hybrid",
             "retrieval alone? uplift = hit_rate(hybrid + judge) − hit_rate(hybrid only).",
@@ -324,16 +324,16 @@ def _print_fig13(rows_by_ds: dict[str, list[dict]]) -> None:
         )
         any_data = True
     if not any_data:
-        print("(no data — run `make benchmark DATASET=<ds>`)")
+        print("(no data - run `make benchmark DATASET=<ds>`)")
 
 
 def _print_fig15(rows_by_ds: dict[str, list[dict]]) -> None:
     _section(
-        "§ Fig. 15 — k-sweep ablation, hybrid retrieval (no judge)   (paper §7.4.2)",
+        "§ Fig. 15 - k-sweep ablation, hybrid retrieval (no judge)   (paper §7.4.2)",
         [
             "Ablation: the LLM judge is deliberately turned OFF here so we can study",
             "retrieval alone as a function of k ∈ {1, 5, 10, 30, 50}. The full PNEUMA",
-            "pipeline still uses the judge — Fig. 15 just isolates the retrieval stage.",
+            "pipeline still uses the judge - Fig. 15 just isolates the retrieval stage.",
             "Why: in the full pipeline, hybrid retrieval picks top-k candidates and the",
             "judge re-ranks them down to top-1. So `recall@k of hybrid retrieval' bounds",
             "what the judge can possibly find. Fig. 15 shows that recall saturates",
@@ -379,12 +379,12 @@ def _print_fig15(rows_by_ds: dict[str, list[dict]]) -> None:
             )
             any_data = True
         if not any_data:
-            print("  (no data — run `make benchmark DATASET=<ds>`)")
+            print("  (no data - run `make benchmark DATASET=<ds>`)")
 
 
 def _print_fig9(rows_by_ds: dict[str, list[dict]]) -> None:
     _section(
-        "§ Fig. 9 — Online query throughput (q/s)   (paper §7.2.1)",
+        "§ Fig. 9 - Online query throughput (q/s)   (paper §7.2.1)",
         [
             "End-to-end latency for the full pipeline at k=1 on a 100-question subset,",
             "averaged over 10 runs, reported in queries/second. PNEUMA only runs Fig. 9",
@@ -465,7 +465,7 @@ def _print_fig9(rows_by_ds: dict[str, list[dict]]) -> None:
                 )
                 any_data = True
     if not any_data:
-        print("(no data — run `make benchmark DATASET=<ds>`)")
+        print("(no data - run `make benchmark DATASET=<ds>`)")
 
 
 def _project_root() -> Path:
@@ -571,7 +571,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  source: {label} → {root}")
             print("=" * 60)
         if not root.exists():
-            print(f"  ⚠ {root} not present — skipping (run the corresponding bench first)")
+            print(f"  ⚠ {root} not present - skipping (run the corresponding bench first)")
             continue
         main_print(results_root=root)
 

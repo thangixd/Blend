@@ -1,21 +1,3 @@
-"""Thread-local LLM-judge timing accumulator.
-
-Both the Blend NLSeeker rerank path and the PNEUMA-side patched
-``prompt_openai_llm`` call ``JUDGE_TIMER.record(...)`` exactly once per
-HTTP roundtrip to the judge. ``judge_calls`` therefore counts roundtrips,
-not logical judgments — the spec's `parity_deltas` notes this.
-
-Per-query usage:
-
-    JUDGE_TIMER.reset()
-    ... run retrieval ...
-    metrics = JUDGE_TIMER.read()  # judge_ms, judge_calls, judge_tokens_in/out
-
-The ``judging()`` context manager flips a thread-local flag so the
-LLM-call wrapper can decide whether the *current* call is a judge call
-(rerank=on path) or a non-judge call (e.g. summarizer). Without the flag
-we'd time every LLM call, polluting judge metrics with summarization.
-"""
 from __future__ import annotations
 
 import threading

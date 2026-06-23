@@ -73,7 +73,7 @@ _ID_BY_SOURCE = {
 }
 
 
-# Bench-wide constants — must match the Blend side so the two pneuma_compat
+# Bench-wide constants - must match the Blend side so the two pneuma_compat
 # files can be cross-compared.
 N = 5
 ALPHA = 0.5
@@ -131,8 +131,8 @@ def _open_collection(index_dir: Path):
     """Open the PNEUMA-built ChromaDB collection.
 
     Index layout (verified against IndexGenerator):
-        ``<index_dir>/indexes/vector/`` — chromadb persistent client root
-        ``<index_dir>/indexes/fulltext/`` — bm25s retriever directory
+        ``<index_dir>/indexes/vector/`` - chromadb persistent client root
+        ``<index_dir>/indexes/fulltext/`` - bm25s retriever directory
 
     The collection name is ``pneuma_<dataset>`` per pneuma_build's
     ``generate_index(index_name=f"pneuma_{dataset}")`` convention.
@@ -403,7 +403,7 @@ def _gpu_info() -> dict:
     """Return ``{"raw": "<nvidia-smi line>"}`` or ``{"raw": "unknown"}``.
 
     The bench's compare_v2 only treats this as an opaque label, so a single
-    raw line is enough — no parsing into count/model/memory.
+    raw line is enough - no parsing into count/model/memory.
     """
     try:
         out = subprocess.check_output(

@@ -1,37 +1,3 @@
-"""Drive PNEUMA's public ``Pneuma()`` API to build a vector + BM25 index
-under ``pneumaBenchdata/indexes/<dataset>/``.
-
-Determinism + endpoint routing live in
-``scripts.benchmark.pneuma_patches.apply_patches()``, which must be called
-before this module's ``build_pneuma_index`` runs in production.  ``pneuma_cli``
-applies the patches at startup; unit tests mock ``Pneuma`` and skip the patch.
-
-Importing :mod:`scripts.benchmark.pneuma_patches` (without invoking
-``apply_patches``) is sufficient to splice the vendored ``pneuma/src``
-directory onto ``sys.path`` — the path-splicing happens at module import
-time, not inside ``apply_patches``.
-
-PNEUMA's ``add_tables`` walks the target folder with ``os.listdir`` and
-ingests every CSV/Parquet it finds.  Our lake also contains a
-``_metadata.csv`` bookkeeping file (``TableId,Context``) which PNEUMA
-would mistake for a table.  This module therefore mirrors the lake into
-a sibling ``_tables_view/`` directory containing only the table files,
-points ``add_tables`` at that view, and feeds a translated metadata
-file (see ``_write_pneuma_metadata_csv`` below) to ``add_metadata``.
-
-Two metadata-schema details PNEUMA enforces (``registrar.py:408-424``):
-
-  * Column names must be ``table_id, value`` (lowercase, "value", not
-    ``TableId, Context`` like Blend writes).
-  * Each ``table_id`` must equal the path the table was registered under
-    in ``add_tables`` — i.e. the symlink path inside ``_tables_view/``,
-    not the integer ``TableId`` from the lake's ``_manifest.json``.
-
-We therefore translate Blend's ``_metadata.csv`` into a sidecar
-``_metadata_pneuma.csv`` under the index dir before calling
-``add_metadata``.  Blend's file stays untouched so NLSeeker's bench can
-still consume it.
-"""
 from __future__ import annotations
 
 import csv
@@ -45,7 +11,7 @@ from typing import Any
 
 # Importing pneuma_patches splices ``<repo>/pneuma/src`` onto sys.path
 # (see the module-level block at the top of pneuma_patches.py); we don't
-# need to call apply_patches() here — pneuma_cli does that at startup
+# need to call apply_patches() here - pneuma_cli does that at startup
 # before invoking us.
 from scripts.benchmark import pneuma_patches as _pp  # noqa: F401  (side-effect import)
 
@@ -128,7 +94,7 @@ def build_pneuma_index(
         if pneuma_metadata is None:
             logger.warning(
                 "Lake %s has _metadata.csv but no rows survived translation "
-                "(missing manifest, no matching symlinks, or empty file) — "
+                "(missing manifest, no matching symlinks, or empty file) - "
                 "context strings will be absent from the index.",
                 lake,
             )
@@ -136,7 +102,7 @@ def build_pneuma_index(
             pneuma.add_metadata(str(pneuma_metadata))
     else:
         logger.warning(
-            "No _metadata.csv found in lake %s — context strings will be absent "
+            "No _metadata.csv found in lake %s - context strings will be absent "
             "from the index; retrieval quality may be lower than the paper baseline.",
             lake,
         )
@@ -170,7 +136,7 @@ def _write_pneuma_metadata_csv(
             continue
         view_path = tables_view / entry.name
         if not view_path.exists():
-            # Lake has a CSV with no symlink in the view — skip.  Should
+            # Lake has a CSV with no symlink in the view - skip.  Should
             # only happen if the view is stale; _materialize_tables_view
             # rebuilds it fresh each call, so this is defensive.
             table_id_int += 1

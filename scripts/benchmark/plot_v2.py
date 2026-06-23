@@ -9,12 +9,12 @@ Usage:
     python -m scripts.benchmark.plot_v2 --show             # also pop up windows
 
 Figures produced (one PNG each):
-    fig06_overall_hitrate.png         — Fig. 6, full pipeline, k=1 and k=5
-    table02_hybrid_no_judge.png       — Table 2, hybrid no judge, per lane
-    fig13_judge_uplift.png            — Fig. 13, judge uplift, per lane
-    fig15_k_sweep.png                 — Fig. 15, k-sweep ablation, per lane
-    fig09_throughput_rerank_on.png    — Fig. 9, full pipeline q/s only (paper-faithful)
-    fig09_throughput_rerank_both.png  — Fig. 9 + hybrid-only baseline side-by-side
+    fig06_overall_hitrate.png         - Fig. 6, full pipeline, k=1 and k=5
+    table02_hybrid_no_judge.png       - Table 2, hybrid no judge, per lane
+    fig13_judge_uplift.png            - Fig. 13, judge uplift, per lane
+    fig15_k_sweep.png                 - Fig. 15, k-sweep ablation, per lane
+    fig09_throughput_rerank_on.png    - Fig. 9, full pipeline q/s only (paper-faithful)
+    fig09_throughput_rerank_both.png  - Fig. 9 + hybrid-only baseline side-by-side
 """
 
 from __future__ import annotations
@@ -116,7 +116,7 @@ def _grouped_bars(
 
 
 # ---------------------------------------------------------------------------
-# Fig. 6 — full pipeline overall hit rate
+# Fig. 6 - full pipeline overall hit rate
 # ---------------------------------------------------------------------------
 
 def plot_fig6(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
@@ -155,7 +155,7 @@ def plot_fig6(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Table 2 — hybrid retrieval, no judge, per lane
+# Table 2 - hybrid retrieval, no judge, per lane
 # ---------------------------------------------------------------------------
 
 def plot_table2(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
@@ -190,7 +190,7 @@ def plot_table2(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fig. 13 — judge uplift over hybrid, per lane
+# Fig. 13 - judge uplift over hybrid, per lane
 # ---------------------------------------------------------------------------
 
 def plot_fig13(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
@@ -243,7 +243,7 @@ def plot_fig13(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fig. 15 — k-sweep ablation, hybrid no judge, per lane
+# Fig. 15 - k-sweep ablation, hybrid no judge, per lane
 # ---------------------------------------------------------------------------
 
 def plot_fig15(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
@@ -301,7 +301,7 @@ def plot_fig15(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fig. 9 — online query throughput
+# Fig. 9 - online query throughput
 # ---------------------------------------------------------------------------
 
 def _qps(row: dict | None) -> float | None:
@@ -373,7 +373,7 @@ def plot_fig9_rerank_both(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
     paper_qps = [PAPER[d].fig9_qps for d in datasets]
     paper_blank: list[float | None] = [None] * len(datasets)
 
-    # Independent y-axes — off is ~7-10× faster than on.
+    # Independent y-axes - off is ~7-10× faster than on.
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     _grouped_bars(
         axes[0], datasets, blend_off, paper_blank,
@@ -407,7 +407,7 @@ def plot_fig9_rerank_both(rows_by_ds: dict[str, list[dict]], out: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Latency breakdowns — matvec (brute-force) and judge cost
+# Latency breakdowns - matvec (brute-force) and judge cost
 # ---------------------------------------------------------------------------
 
 def _row(rows: list[dict], *, family: str, mode: str, k: int) -> dict | None:
@@ -613,7 +613,7 @@ def render_vector_cost_panel(rows: list[dict], *, out_path: Path) -> None:
     ax.set_xlabel("vector_ms_p50 (log)")
     ax.set_ylabel("recall_at_k")
     ax.set_xscale("log")
-    ax.set_title("Vector-search cost vs recall — brute-force matvec vs HNSW")
+    ax.set_title("Vector-search cost vs recall - brute-force matvec vs HNSW")
     handles, labels = ax.get_legend_handles_labels()
     seen = {}
     for h, l in zip(handles, labels):
@@ -667,7 +667,7 @@ def main(argv: list[str] | None = None) -> int:
     rows_by_ds = _load(args.results_root)
     if not rows_by_ds:
         raise SystemExit(
-            f"no benchmark data found under {args.results_root} — "
+            f"no benchmark data found under {args.results_root} - "
             "did you run `make bench`?"
         )
 
