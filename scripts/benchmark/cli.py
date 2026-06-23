@@ -90,8 +90,6 @@ def _do_run(spec, max_questions: int | None,
     endpoints_meta = probe_endpoints(
         llm_urls=list(FAMILY_LLM_URLS.values()),
         llm_model="Qwen2.5-7B-Instruct",
-        embed_url=EMBED_URL,
-        embed_model="bge-base-en-v1.5",
     )
     # Recover unresolvable/dropped counts from a fresh sweep over the manifest.
     import json

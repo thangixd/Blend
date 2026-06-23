@@ -44,17 +44,19 @@ def probe_endpoints(
     *,
     llm_urls: "list[str] | str",
     llm_model: str,
-    embed_url: str,
-    embed_model: str,
+    embed_url: "str | None" = None,
+    embed_model: "str | None" = None,
 ) -> dict:
     if isinstance(llm_urls, str):
         urls = [llm_urls]
     else:
         urls = list(llm_urls)
-    return {
+    result: dict = {
         "llm": [_probe_one(f"llm[{i}]", url, llm_model) for i, url in enumerate(urls)],
-        "embed": _probe_one("embed", embed_url, embed_model),
     }
+    if embed_url and embed_model:
+        result["embed"] = _probe_one("embed", embed_url, embed_model)
+    return result
 
 
 __all__ = ["probe_endpoints", "EndpointError"]
