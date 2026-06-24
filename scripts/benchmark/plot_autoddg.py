@@ -1,3 +1,4 @@
+"""Aggregate AutoDDG per-cell results into comparison plots."""
 from __future__ import annotations
 
 import argparse
