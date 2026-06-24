@@ -529,15 +529,11 @@ def _run_generation_only(
                 real_contexts=contexts_by_tid.get(table_id, []),
             )
             LOG.info("Generated artifacts for TableId=%d (%s)", table_id, file_path.name)
-        if dbms == "duckdb":
-            cursor.execute("COMMIT")
-        else:
+        if dbms != "duckdb":
             con.commit()
     except BaseException:
         try:
-            if dbms == "duckdb":
-                cursor.execute("ROLLBACK")
-            else:
+            if dbms != "duckdb":
                 con.rollback()
         except Exception:
             pass
