@@ -227,7 +227,9 @@ bench-autoddg: bench-autoddg-generate  ## Generate + index + eval all AUTODDG_CE
 	        --cell $$cell \
 	        --config $(AUTODDG_INDEX_ROOT)/$$cell/config.ini \
 	        $(if $(AUTODDG_QUESTIONS),--questions $(AUTODDG_QUESTIONS),) \
-	        --lake-dir $(AUTODDG_LAKE_DIR) || exit 1; \
+	        --lake-dir $(AUTODDG_LAKE_DIR) \
+	        --k-values $(BENCHMARK_K_VALUES) \
+	        --rerank-modes $(BENCHMARK_RERANK_MODES) || exit 1; \
 	done
 	$(PYTHON) -m scripts.benchmark.plot_autoddg --results-dir $(AUTODDG_RESULTS_ROOT)
 
