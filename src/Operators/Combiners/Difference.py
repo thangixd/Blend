@@ -1,15 +1,10 @@
 from src.Operators.Combiners.CombinerBase import Combiner
 
 # Typing imports
-from src.Operators.OperatorBase import Operator
 from src.DBHandler import DBHandler
-from typing import List
 
 
 class Difference(Combiner):
-    def __init__(self, minuend: Operator, subtrahend: Operator, k: int = 10) -> None:
-        super().__init__(minuend, subtrahend, k=k)
-
     def cost(self) -> int:
         return self._inputs[1].cost()
     

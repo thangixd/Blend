@@ -8,6 +8,9 @@ logs/
 freqs_dict.pkl
 freqs_dict.csv
 
+/blend_duckdb.db
+/tests/test_duckdb.db
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

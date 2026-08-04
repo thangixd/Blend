@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gt-plans:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync
+
+      # Operator.DB = DBHandler() runs at import time and reads config/config.ini,
+      # so the config has to resolve before any test imports an operator. The
+      # committed config points at the root index, which CI does not build.
+      - name: Point the runtime config at the test index
+        run: cp tests/tasks/adventure_works.ini config/config.ini
+
+      - name: Build the index
+        run: >
+          uv run python -m scripts.create_index_duckdb
+          --lake adventure_works
+          --datalake tests/tasks/datalake
+          --db tests/test_duckdb.db
+
+      - name: Run tests
+        run: uv run python tests/test_gt_plans.py
