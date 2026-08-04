@@ -97,7 +97,7 @@ class MultiColumnOverlap(Seeker):
         g = input_cpy.groupby([input_cpy.columns.values[0]])
         gd = defaultdict(list)
         for key, item in g:
-            gd[str(key[0])] = g.get_group(key[0]).values
+            gd[str(key[0])] = item.values
 
         candidate_external_row_ids = []
         candidate_external_col_ids = []

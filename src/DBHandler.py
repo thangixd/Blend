@@ -11,7 +11,7 @@ import pickle
 
 
 class DBHandler(object):
-    USE_ML_OPTIMIZER = True
+    USE_ML_OPTIMIZER = False
     frequency_dict = None
 
     def __init__(self) -> None:
@@ -97,9 +97,10 @@ class DBHandler(object):
     def execute_and_fetchall(self, query: str) -> List[Union[Tuple, List]]:
         """Returns results"""
         query = self.clean_query(query)
-        if self.dbms == 'postgres':
-            query = query.replace('TO_BITSTRING(superkey)', f'superkey')
-        query.replace('TO_BITSTRING(superkey)', f'superkey')
+        # TO_BITSTRING is Vertica-only; everywhere else the super key column
+        # already holds a string, so the cast is dropped.
+        if self.dbms != 'vertica':
+            query = query.replace('TO_BITSTRING(superkey)', 'superkey')
         query = query.replace('CellValue', 'tokenized').replace("superkey", "super_key").replace("ColumnId", "colid")
 
         self.cursor.execute(query)

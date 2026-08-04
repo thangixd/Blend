@@ -9,9 +9,11 @@ To enhance the execution of the discovery pipeline, we rewrite the search querie
 
 
 ## Installation
-The code was tested on Python 3.10.9. To install the required packages run the following command: 
+Dependencies are managed with [uv](https://docs.astral.sh/uv/). `pyproject.toml` lists them, `uv.lock` pins the exact resolved versions and `.python-version` pins the interpreter.
+
 ```bash
-python -m pip install -r requirements.txt
+uv sync                 # create .venv from uv.lock
+uv sync --all-extras    # also install fastparquet, needed only by the GitTables loader
 ```
 
 ## Index generation
