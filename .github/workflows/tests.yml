@@ -32,5 +32,22 @@ jobs:
           --datalake tests/tasks/datalake
           --db tests/test_duckdb.db
 
-      - name: Run tests
-        run: uv run python tests/test_gt_plans.py
+      # The case list comes from the test file so the two cannot drift apart.
+      # Each case runs in its own log group and a failure does not stop the rest.
+      - name: Run plan tests
+        run: |
+          mapfile -t cases < <(uv run python tests/test_gt_plans.py --list)
+          echo "running ${#cases[@]} cases"
+
+          failed=()
+          for case in "${cases[@]}"; do
+            echo "::group::$case"
+            uv run python tests/test_gt_plans.py "$case" || failed+=("$case")
+            echo "::endgroup::"
+          done
+
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::${#failed[@]} of ${#cases[@]} cases failed: ${failed[*]}"
+            exit 1
+          fi
+          echo "all ${#cases[@]} cases match the report"

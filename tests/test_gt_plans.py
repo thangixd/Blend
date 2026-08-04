@@ -2,6 +2,7 @@ import ast
 import re
 import subprocess
 import sys
+import textwrap
 from collections import Counter
 from pathlib import Path
 
@@ -71,25 +72,68 @@ else:
         check(case)
 
 
-def main():
+def table_names():
+    import duckdb
+
+    with duckdb.connect(str(INDEX_DB), read_only=True) as con:
+        rows = con.execute('SELECT tableid, filename FROM adventure_works_tables').fetchall()
+
+    return {tableid: filename.removesuffix('.csv') for tableid, filename in rows}
+
+
+def report(label, ids, names, width=110):
+    counts = Counter(ids)
+    listing = ', '.join(f'{names.get(i, i)}' + (f' x{counts[i]}' if counts[i] > 1 else '')
+                        for i in sorted(counts))
+    head = f'       {label:<9} '
+    for line in textwrap.wrap(str(sorted(ids)), width, initial_indent=head, subsequent_indent=' ' * len(head)):
+        print(line)
+    for line in textwrap.wrap(listing, width, initial_indent=' ' * len(head), subsequent_indent=' ' * len(head)):
+        print(line)
+
+
+def main(argv):
+    if argv == ['--list']:
+        print('\n'.join(sorted(EXPECTED)))
+        return 0
+
+    unknown = sorted(set(argv) - set(EXPECTED))
+    if unknown:
+        print(f'unknown case(s) {unknown}, expected one of {sorted(EXPECTED)}')
+        return 2
+
+    cases = sorted(argv) if argv else sorted(EXPECTED)
     reason = _requirements()
     if reason:
         print(f'skipped: {reason}')
         return 0
 
+    names = table_names()
     failures = 0
-    for case in sorted(EXPECTED):
+    for case in cases:
+        expected = EXPECTED[case]
         try:
-            ids = check(case)
+            ids = run_plan(case)
         except AssertionError as error:
             failures += 1
-            print(f'FAIL {case}\n     {error}')
-        else:
-            print(f'ok   {case:<30} {len(ids)} TableIds')
+            print(f'FAIL {case}\n     {error}\n')
+            continue
 
-    print(f'\n{len(EXPECTED) - failures}/{len(EXPECTED)} plans match the report')
+        matched = Counter(ids) == Counter(expected)
+        failures += not matched
+        print(f'{"ok  " if matched else "FAIL"} {case:<30} {len(ids)} TableIds')
+        report('expected', expected, names)
+        report('returned', ids, names)
+        if not matched:
+            surplus = sorted((Counter(ids) - Counter(expected)).elements())
+            missing = sorted((Counter(expected) - Counter(ids)).elements())
+            print(f'       unexpected {[names.get(i, i) for i in surplus]}')
+            print(f'       missing    {[names.get(i, i) for i in missing]}')
+        print(flush=True)
+
+    print(f'{len(cases) - failures}/{len(cases)} plans match the report')
     return 1 if failures else 0
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
