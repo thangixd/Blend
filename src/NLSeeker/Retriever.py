@@ -58,7 +58,7 @@ class Retriever:
                                   for position, document in enumerate(self._bm25.corpus)}
 
     def retrieve(self, query: str, k: int, n: int, alpha: float,
-                 table_filter: TableFilter = EMPTY_FILTER) -> List[int]:
+                 table_filter: TableFilter = EMPTY_FILTER, rerank: bool = True) -> List[int]:
         """Returns the TableIds of the top-k tables for the query, in rank order."""
         # Upstream Pneuma hands retrieve() the raw query string, which bm25s iterates
         # character by character and scores as zero. Tokenizing is the fix.
@@ -104,7 +104,7 @@ class Retriever:
         fused = sorted(document_ids,
                        key=lambda i: (-(alpha * bm25_norm[i] + (1 - alpha) * vector_norm[i]), i))[:pooled]
 
-        ranked = self._rerank(query, fused, texts)
+        ranked = self._rerank(query, fused, texts) if rerank else fused
         tables = dict.fromkeys(Schema.parse_table_id(document_id) for document_id in ranked)
         return list(tables)[:k]
 

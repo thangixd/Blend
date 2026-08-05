@@ -1,0 +1,9 @@
+.git
+.venv
+data/
+nl_index/
+pneuma/
+blend_duckdb.db
+tests/test_duckdb.db
+logs/
+__pycache__/

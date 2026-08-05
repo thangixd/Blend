@@ -11,12 +11,14 @@ class NaturalLanguage(Seeker):
     """Answers a natural-language question against the NL index."""
 
     def __init__(self, query: str, k: int = 10, n: Optional[int] = None,
-                 alpha: Optional[float] = None, index_name: Optional[str] = None) -> None:
+                 alpha: Optional[float] = None, index_name: Optional[str] = None,
+                 rerank: bool = True) -> None:
         super().__init__(k)
         self.query = str(query)
         self.n = n
         self.alpha = alpha
         self.index_name = index_name
+        self.rerank = rerank
 
     def create_sql_query(self, db: DBHandler, additionals: str = "") -> str:
         # A combiner's TableId predicate is pushed into retrieval rather than spliced into the
@@ -55,7 +57,8 @@ class NaturalLanguage(Seeker):
         return retriever.retrieve(self.query, k=self.k,
                                   n=config.n if self.n is None else self.n,
                                   alpha=config.alpha if self.alpha is None else self.alpha,
-                                  table_filter=parse_additionals(additionals))
+                                  table_filter=parse_additionals(additionals),
+                                  rerank=self.rerank)
 
 
 def _load_retriever(config):

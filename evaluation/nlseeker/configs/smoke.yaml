@@ -1,0 +1,29 @@
+run:
+  tag: smoke
+  questions_limit: 2
+
+datasets: [adventure_works]
+families: [BC1, BX1]
+
+retrieval:
+  k: [1]
+  n: [5]
+  alpha: [0.5]
+  rerank: [on]
+
+nlseeker:
+  llm_base_url: http://127.0.0.1:8001/v1
+  llm_api_key: vllm-local
+  llm_model: Qwen2.5-7B-Instruct
+  llm_temperature: 0.0
+  llm_max_new_tokens: 512
+  llm_context_length: 32768
+  llm_concurrency: 1
+  llm_retry_attempts: 5
+  llm_tokenizer: Qwen/Qwen2.5-7B-Instruct
+  embedding_base_url: http://127.0.0.1:8002/v1
+  embedding_api_key: vllm-local
+  embedding_model: bge-base-en-v1.5
+  embedding_max_tokens: 512
+  embedding_batch_size: 256
+  embedding_tokenizer: BAAI/bge-base-en-v1.5

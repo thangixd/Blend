@@ -6,7 +6,7 @@ from typing import Optional
 
 
 def NLSearch(query: str, k: int = 10, n: Optional[int] = None, alpha: Optional[float] = None,
-             index_name: Optional[str] = None) -> Plan:
+             index_name: Optional[str] = None, rerank: bool = True) -> Plan:
     plan = Plan()
-    plan.add("nl", NaturalLanguage(query, k, n, alpha, index_name))
+    plan.add("nl", NaturalLanguage(query, k, n, alpha, index_name, rerank))
     return plan

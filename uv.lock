@@ -160,6 +160,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+eval = [
+    { name = "pyyaml" },
+]
 index = [
     { name = "fastparquet" },
 ]
@@ -186,6 +189,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pyarrow", specifier = ">=16.0" },
     { name = "pystemmer", marker = "extra == 'nl'", specifier = ">=2.2.0.3" },
+    { name = "pyyaml", marker = "extra == 'eval'", specifier = ">=6.0.3" },
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "scipy", marker = "extra == 'nl'", specifier = ">=1.14" },
     { name = "tokenizers", marker = "extra == 'nl'", specifier = ">=0.21" },
@@ -193,7 +197,7 @@ requires-dist = [
     { name = "vertica-python", specifier = ">=1.4" },
     { name = "xgboost", specifier = ">=2.0,<4" },
 ]
-provides-extras = ["index", "nl"]
+provides-extras = ["index", "nl", "eval"]
 
 [[package]]
 name = "bm25s"

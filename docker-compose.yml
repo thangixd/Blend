@@ -1,0 +1,20 @@
+services:
+  blend:
+    build:
+      context: .
+      network: host
+    image: blend:latest
+    container_name: blend
+    network_mode: host
+    working_dir: /app
+    volumes:
+      - ./data/Evaluation:/app/data/Evaluation
+      # tokenizer.json pulls from the Hub survive rebuilds
+      - hf-cache:/root/.cache/huggingface
+    environment:
+      PYTHONHASHSEED: "0"
+    command: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped
+
+volumes:
+  hf-cache:
