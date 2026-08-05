@@ -16,18 +16,22 @@ class Seeker(Operator, ABC):
             self.model = None
             self._cached_predicted_runtime = 1
 
-    def _predict_runtime(self, columns: list, db: DBHandler) -> float:
-        if self._cached_predicted_runtime is not None:
-            return self._cached_predicted_runtime
-        
+    def _feature_columns(self) -> list:
+        raise NotImplementedError
+
+    def _features(self, db: DBHandler) -> list:
+        columns = self._feature_columns()
         rows = [tuple(row) for row in zip(*columns)]
-        
+
         freqs = db.get_token_frequencies(set().union(*columns))
         prod = 1
         for col in columns:
             prod *= sum(freqs[token] for token in set(db.clean_value_collection(col)) if token in freqs)
-        
-        features = [len(set(rows)), prod ** (1 / len(columns)), len(columns)]
-        self._cached_predicted_runtime = self.model.predict([features])[0]
-        
+
+        return [len(set(rows)), prod ** (1 / len(columns)), len(columns)]
+
+    def ml_cost(self, db: DBHandler) -> float:
+        if self._cached_predicted_runtime is None:
+            self._cached_predicted_runtime = float(self.model.predict([self._features(db)])[0])
+
         return self._cached_predicted_runtime

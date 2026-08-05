@@ -67,9 +67,9 @@ class MultiColumnOverlap(Seeker):
     
     def cost(self) -> int:
         return 10
-    
-    def ml_cost(self, db: DBHandler) -> float:
-        return self._predict_runtime([list(col) for col in self.input.values.T], db)
+
+    def _feature_columns(self) -> list:
+        return [list(col) for col in self.input.values.T]
 
     def run_filter(self, PLs: List, db: DBHandler) -> List[int]:
         # - Preprocessing

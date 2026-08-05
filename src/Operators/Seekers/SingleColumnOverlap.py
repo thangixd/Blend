@@ -26,6 +26,6 @@ class SingleColumnOverlap(Seeker):
 
     def cost(self) -> int:
         return 4
-    
-    def ml_cost(self, db: DBHandler) -> float:
-        return self._predict_runtime([list(self.input)], db)
+
+    def _feature_columns(self) -> list:
+        return [list(self.input)]

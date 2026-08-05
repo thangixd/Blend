@@ -41,8 +41,13 @@ class NaturalLanguage(Seeker):
     def cost(self) -> int:
         return 11
 
-    def ml_cost(self, db: DBHandler) -> float:
-        return 1.0
+    def _features(self, db: DBHandler) -> list:
+        n = self.n
+        if n is None:
+            from src.NLSeeker.Config import NLSeekerConfig
+            n = NLSeekerConfig.load(db.config_path).n
+
+        return [len(self.query.split()), self.k * n, int(self.rerank)]
 
     def _retrieve(self, db: DBHandler, additionals: str) -> List[int]:
         from dataclasses import replace

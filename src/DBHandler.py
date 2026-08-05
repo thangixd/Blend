@@ -2,17 +2,14 @@ import random
 import configparser
 from pathlib import Path
 import pandas as pd
-import time
 
 # Typing imports
 from typing import List, Union, Tuple, Iterable
 from numbers import Number
-import pickle
 
 
 class DBHandler(object):
-    USE_ML_OPTIMIZER = False
-    frequency_dict = None
+    USE_ML_OPTIMIZER = True
 
     def __init__(self) -> None:
         self.connection = None
@@ -66,24 +63,6 @@ class DBHandler(object):
 
         self.cursor = self.connection.cursor()
         self.index_table = config['Database']['index_table']
-        if DBHandler.frequency_dict is None:
-            print("-------- Database Configuration --------")
-            print(f"Using {dbms.capitalize()} database, with index table {config['Database']['index_table']}")
-            if DBHandler.USE_ML_OPTIMIZER:
-                try:
-                    print("Loading frequency dict...", end="", flush=True)
-                    start = time.time()
-                    df = pd.read_csv("freqs_dict.csv")
-                    DBHandler.frequency_dict = dict(zip(df['tokenized'], df['frequency']))
-                    # DBHandler.frequency_dict = pickle.load(open("freqs_dict.pkl", 'rb'))
-                    print(f"\rFrequency dict loaded in {time.time() - start:.2f} seconds")
-                except FileNotFoundError as e:
-                    print("Could not load frequency dict")
-                    raise e
-            else:
-                DBHandler.frequency_dict = {}
-                print("You are not using the ML optimizer, so the frequency dict will not be loaded. Set the USE_ML_OPTIMIZER flag to True to use it.")
-            print("----------------------------------------")
             
 
     def close(self) -> None:
@@ -156,8 +135,19 @@ class DBHandler(object):
     
     def get_token_frequencies(self, tokens: Iterable[str]) -> dict[str, int]:
         tokens = DBHandler.clean_value_collection(set(tokens))
-        
-        return {token: DBHandler.frequency_dict.get(token, 1) for token in tokens}
+        if len(tokens) == 0:
+            return {}
+
+        sql = f"""
+        SELECT CellValue, COUNT(*)
+        FROM AllTables
+        WHERE CellValue IN ({DBHandler.create_sql_list_str(tokens)})
+        GROUP BY CellValue
+        """
+        freqs = {token: 1 for token in tokens}
+        freqs.update({token: int(count) for token, count in self.execute_and_fetchall(sql)})
+
+        return freqs
 
     
     @staticmethod

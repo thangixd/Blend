@@ -1,5 +1,9 @@
 # Blend: A Unified Data Discovery System
-Here you can find the code for the "Blend: A Unified Data Discovery System" paper.
+Here you can find the code for the "Blend: A Unified Data Discovery System" paper, extended with a
+natural-language seeker (a reimplementation of the retrieval half of Pneuma) and a trainable ML cost
+optimizer. DuckDB is the only supported backend; the Vertica and Postgres paths from the paper are
+kept for reference only.
+
 ## Abstract
 Data discovery is an iterative and incremental process that necessitates the execution of multiple data discovery queries to identify the desired tables from large and diverse data lakes. Current methodologies concentrate on single discovery tasks such as join, correlation, or union discovery. However, in practice, a series of these approaches and their corresponding index structures are necessary to enable the user to discover the desired tables.
 
@@ -7,83 +11,133 @@ This paper presents Blend, a comprehensive data discovery system that empowers u
 
 To enhance the execution of the discovery pipeline, we rewrite the search queries into optimized SQL statements to push the data operators down to the database. We demonstrate that our holistic system is able to achieve comparable effectiveness and runtime efficiency to the individual state-of-the-art approaches specifically designed for a single task.
 
-
 ## Installation
-Dependencies are managed with [uv](https://docs.astral.sh/uv/). `pyproject.toml` lists them, `uv.lock` pins the exact resolved versions and `.python-version` pins the interpreter.
+Dependencies are managed with [uv](https://docs.astral.sh/uv/). `pyproject.toml` lists them, `uv.lock` pins the exact resolved versions and `.python-version` pins the interpreter (3.12).
 
 ```bash
-uv sync                 # create .venv from uv.lock
-uv sync --all-extras    # also install fastparquet, needed only by the GitTables loader
+uv sync                 # core: token seekers only
+uv sync --extra nl      # + openai, chromadb, bm25s, tokenizers - needed for the NaturalLanguage seeker
+uv sync --all-extras    # + fastparquet, needed only by the GitTables loader
 ```
 
-## Index generation
-To build the index you can use the `create_index.py` file. Before executing it you must change the required parameters in the file.
+## Inference endpoints (NaturalLanguage seeker only)
+The NL seeker never loads model weights locally. It talks to two OpenAI-compatible HTTP endpoints
+(e.g. two vLLM containers): a chat LLM (used for table summaries and the rerank judge) and an
+embedder. Both URLs go into the `[NLSeeker]` config section below. The token seekers (keyword,
+join, correlation, multi-column) never touch them.
 
-```python
-PATH = 'data/*.csv' # The path where the csv files are located
-INDEX_NAME = 'blend_index' # The name of the created index for Blend
-
-dbcon = vertica_python.connect(
-        port=5433,
-        host='db.example.com',
-        user='username',
-        password='password',
-        database='vdb',
-        session_label='some_label',
-        read_timeout=60000,
-        unicode_error='strict',
-        ssl=False,
-        use_prepared_statements=False
-)
-```
 ## Database configuration
-To run, Blend needs a database connection. To configure the database connection you need to create a config file in the `config` folder. The config file must be named `config.ini`. Depending on the DBMS you are using you need to change the config file. Below you can find an example of a config file for Vertica.
+Blend reads `config/config.ini` at import time, so that file must exist and connect. For DuckDB
+plus the NL seeker, one ini carries both sections (template: `config/nlseeker_example.ini`):
 
 ```ini
 [Database]
-dbms=vertica
-host=db.example.com
-port=5433
-user=username
-password=password
-dbname=vdb
+dbms=duckdb
+path=blend_duckdb.db
+index_table=my_lake
 
-index_table=blend_index
+[NLSeeker]
+out_path=nl_index
+index_name=my_lake
+schema=nl_my_lake
+
+llm_base_url=http://127.0.0.1:8001/v1
+llm_api_key=vllm-local
+llm_model=Qwen2.5-7B-Instruct
+llm_temperature=0.0
+llm_max_new_tokens=512
+llm_context_length=32768
+llm_concurrency=1
+llm_retry_attempts=5
+llm_tokenizer=Qwen/Qwen2.5-7B-Instruct
+
+embedding_base_url=http://127.0.0.1:8002/v1
+embedding_api_key=vllm-local
+embedding_model=bge-base-en-v1.5
+embedding_max_tokens=512
+embedding_batch_size=256
+embedding_tokenizer=BAAI/bge-base-en-v1.5
+
+alpha=0.5
+n=5
 ```
 
+Every `[NLSeeker]` key is required. A plan can be retargeted at another lake at runtime with
+`plan.DB.load_config(Path("path/to/other.ini"))` - this switches the inverted index and the NL
+index together.
 
-## Example
-Underneath you can find the examples of the plans used in the paper.
+## Index generation
+Build the inverted index and the natural-language index over one lake of CSV files, sharing
+TableIds (endpoints must be up for the NL side):
 
-### Union plan
-```python
-def UnionPlan(dataset, k=10):
-    plan = Plan()
-    input_element = Input(dataset)
-    plan.add('input', input_element)
-    for clm_name in dataset.columns:
-        element = Seekers.SC(dataset[clm_name], k)
-        plan.add(clm_name, element, ['input'])
-    plan.add('counter', Combiners.Counter(K), dataset.columns)
-    plan.add('terminal', Terminal(), ['counter'])
+```bash
+uv run python -m scripts.create_index_nl_blend_duckdb \
+  --lake my_lake --datalake path/to/datalake --db blend_duckdb.db --config config/config.ini
 ```
 
+`--lake` names both the subdirectory under `--datalake` and the index table. Useful flags:
+`--no-nl-index` / `--no-blend-index` build one side only, `--metadata` registers extra table
+context for retrieval. To build only the inverted index (no NL, no endpoints needed):
 
-### Augumentation by example plan
+```bash
+uv run python -m scripts.create_index_duckdb \
+  --lake my_lake --datalake path/to/datalake --db blend_duckdb.db
+```
+
+## Training the cost optimizer
+The plan optimizer orders seekers by rule-based costs first and breaks ties with a learned
+runtime model per seeker type (XGBoost, `src/Operators/Seekers/<Class>_model.json`). The models
+are loaded at seeker construction and must exist; a trained set ships with the repo. Training is
+offline - at query time the models only predict. Retraining on your own lake is recommended once
+after installation (stale models can only misorder same-type ties, never change results):
+
+```bash
+uv run python -m scripts.train_ml_optimizer --config config/config.ini
+```
+
+The NaturalLanguage model needs the endpoints and the built NL index;
+`--seekers Keyword SingleColumnOverlap MultiColumnOverlap Correlation` skips it. Token
+frequencies used by the features are queried from the index on demand - no extra artifact.
+
+## Writing plans
+Operators compose into a DAG that compiles down to SQL against the index. Query values must be
+normalized like the index (lowercased, trimmed) or they will not match.
+
 ```python
-def AugmentationByExamplePlan(examples, queries, K=10):
-    plan = Plan()
-    inputs = Input([examples, queries])
-    plan.add('input', inputs)
-    examples_seeker = Seekers.MC(examples, K)
-    plan.add('example', examples_seeker, ['input'])
-    query_seeker = Seekers.SC(queries, K)
-    plan.add('query', query_seeker, ['input'])
-    plan.add('combiner', Combiners.Intersection(K), ['example', 'query'])
-    plan.add('terminal', Terminal(), ['combiner'])
-df = pd.read_csv('dataset.csv')
-aug = CreateAugmentationPlan(df[['E1', 'E2']], df['Q'])
-aug.run()
+from pathlib import Path
+import pandas as pd
+
+from src.Plan import Plan
+from src.Operators import Seekers, Combiners
+
+df = pd.read_csv("my_table.csv")
+cities = df["City"].astype(str).str.lower().tolist()
+
+plan = Plan()
+plan.add("city_join", Seekers.SC(cities, k=50))
+plan.add("nl", Seekers.NL("which tables contain customer mailing addresses", k=50))
+plan.add("intersection", Combiners.Intersection(k=10), inputs=["city_join", "nl"])
+
+plan.DB.load_config(Path("config/config.ini"))
+table_ids = plan.run()
+```
+
+Seekers: `SC` (single-column join), `MC` (multi-column join), `C` (correlation), `Keyword`,
+`NL` (natural language). Combiners: `Intersection`, `Union`, `Counter`, `Difference`.
+`src/Tasks/` has prebuilt factories for the paper tasks plus `NLSearch`:
+
+```python
+from src.Tasks.NLSearch import NLSearch
+
+plan = NLSearch("which tables contain customer mailing addresses", k=10)
+print(plan.run())
+```
+
+## Tests
+
+```bash
+uv run python tests/test_ml_optimizer.py   # optimizer unit tests, no endpoints needed
+uv run python tests/test_gt_plans.py       # ground-truth plans against the test lake
 ```
 
 ## Experiments
@@ -122,4 +176,3 @@ loading overhead from 68.2% in MATE to 14.3%.
 
 ### BLEND optimizer VS. Postgres and Vertica
 As augmentation-by-example leverages various seekers, we evaluated the performance of our query rewriter in the execution engine compared to two baselines that only use the native DBMS optimizer: executing queries independently and then merging the results, and modeling the operator sequence with subquery formulations. According to our experiments on both commercial column store and PostgreSQL, our query rewriter is able to achieve up to 28% and 27% runtime reduction compared to the baselines mentioned above respectively.
-
