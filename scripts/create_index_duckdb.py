@@ -60,19 +60,24 @@ def save_data_to_duckdb(dbcon, data, table_name):
         dbcon.unregister('batch_df')
 
 
-def create_index(dbcon, lake_path, table_name, sep=',', batch_size=BATCH_SIZE):
-    create_table(dbcon, table_name)
-
+def assign_table_ids(lake_path):
+    """Maps every file in the lake to its TableId. The one place ids are assigned."""
     file_paths = sorted(glob(f'{lake_path}'))
     if not file_paths:
         raise FileNotFoundError(f'No files matched {lake_path}')
 
-    print(f'Inserting data into index from {len(file_paths)} files.')
+    return list(enumerate(file_paths))
+
+
+def create_index(dbcon, assignment, table_name, sep=',', batch_size=BATCH_SIZE):
+    create_table(dbcon, table_name)
+
+    print(f'Inserting data into index from {len(assignment)} files.')
     dbcon.executemany(f'INSERT INTO "{table_name}_tables" VALUES (?, ?)',
-                      [(counter, Path(path).name) for counter, path in enumerate(file_paths)])
+                      [(table_id, Path(path).name) for table_id, path in assignment])
 
     data = []
-    for table_counter, file_path in tqdm(list(enumerate(file_paths))):
+    for table_counter, file_path in tqdm(list(assignment)):
         file_content_df = pd.read_csv(file_path, sep=sep, low_memory=False)
         numeric_cols = file_content_df.select_dtypes(include='number').columns
         numeric_cols = [file_content_df.columns.get_loc(col) for col in numeric_cols]
@@ -140,7 +145,8 @@ def main():
     # DBHandler opens DuckDB read-only, so index creation needs its own connection.
     dbcon = duckdb.connect(database=args.db, read_only=False)
     try:
-        create_index(dbcon, str(lake_dir / '*.csv'), args.lake, sep=args.sep, batch_size=args.batch_size)
+        assignment = assign_table_ids(str(lake_dir / '*.csv'))
+        create_index(dbcon, assignment, args.lake, sep=args.sep, batch_size=args.batch_size)
     finally:
         dbcon.close()
 

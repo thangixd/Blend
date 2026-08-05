@@ -19,6 +19,7 @@ class DBHandler(object):
         self.cursor = None
         self.index_table = None
         self.dbms = None
+        self.config_path = None
 
         config_path = Path(__file__).parent.parent / 'config' / 'config.ini'
         if not config_path.exists():
@@ -27,6 +28,9 @@ class DBHandler(object):
 
     def load_config(self, config_path: Path) -> None:
         self.close()
+
+        # NLSeeker reads its own section from whichever config the plan switched to.
+        self.config_path = Path(config_path)
 
         config = configparser.ConfigParser()
         config.read(config_path)
