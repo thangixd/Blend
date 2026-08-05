@@ -61,7 +61,8 @@ class Registrar:
         # Row order from a parallel CSV scan is not deterministic, so the aggregate
         # orders by the row text to keep the hash stable across runs.
         table_hash = self.connection.execute(
-            f'SELECT md5(string_agg(source::text, \'\' ORDER BY source::text)) FROM {reader} AS source',
+            f'SELECT md5(coalesce(string_agg(source::text, \'\' ORDER BY source::text), \'\')) '
+            f'FROM {reader} AS source',
             [str(path)]
         ).fetchone()[0]
 
