@@ -124,20 +124,14 @@ table_ids = plan.run()
 
 Seekers: `SC` (single-column join), `MC` (multi-column join), `C` (correlation), `Keyword`,
 `NL` (natural language). Combiners: `Intersection`, `Union`, `Counter`, `Difference`.
-`src/Tasks/` has prebuilt factories for the paper tasks plus `NLSearch`:
+`src/Tasks/` has prebuilt factories for the paper tasks plus `NLSearch` and `HybridNLSearch`
+(the SC-plus-NL intersection from the example above):
 
 ```python
 from src.Tasks.NLSearch import NLSearch
 
 plan = NLSearch("which tables contain customer mailing addresses", k=10)
 print(plan.run())
-```
-
-## Tests
-
-```bash
-uv run python tests/test_ml_optimizer.py   # optimizer unit tests, no endpoints needed
-uv run python tests/test_gt_plans.py       # ground-truth plans against the test lake
 ```
 
 ## Experiments

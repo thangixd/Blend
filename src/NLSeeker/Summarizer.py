@@ -65,10 +65,10 @@ class Summarizer:
                 self.connection.execute(f'SELECT * FROM "{table_id}" LIMIT 0').description]
 
     def _row_samples(self, table_id: int) -> List[str]:
-        df = self.connection.execute(f'SELECT * FROM "{table_id}"').df()
-        if df.empty:
-            return []
-        sample = df.sample(n=min(len(df), ROW_SAMPLE_SIZE), random_state=0)
+        # Reservoir sampling keeps large tables out of memory; the seed pins the sample.
+        sample = self.connection.execute(
+            f'SELECT * FROM "{table_id}" USING SAMPLE reservoir({ROW_SAMPLE_SIZE} ROWS) REPEATABLE (0)'
+        ).df()
         return [' | '.join(f'{column}: {value}' for column, value in row.items()).strip()
                 for _, row in sample.iterrows()]
 

@@ -134,20 +134,27 @@ class DBHandler(object):
         """
     
     def get_token_frequencies(self, tokens: Iterable[str]) -> dict[str, int]:
-        tokens = DBHandler.clean_value_collection(set(tokens))
-        if len(tokens) == 0:
+        normalized = {token: DBHandler.normalize_token(token) for token in set(tokens)}
+        normalized = {token: norm for token, norm in normalized.items() if norm}
+        if len(normalized) == 0:
             return {}
 
         sql = f"""
         SELECT CellValue, COUNT(*)
         FROM AllTables
-        WHERE CellValue IN ({DBHandler.create_sql_list_str(tokens)})
+        WHERE CellValue IN ({DBHandler.create_sql_list_str(set(normalized.values()))})
         GROUP BY CellValue
         """
-        freqs = {token: 1 for token in tokens}
-        freqs.update({token: int(count) for token, count in self.execute_and_fetchall(sql)})
+        counts = {value: int(count) for value, count in self.execute_and_fetchall(sql)}
 
-        return freqs
+        return {token: counts.get(norm, 1) for token, norm in normalized.items()}
+
+    @staticmethod
+    def normalize_token(value: any) -> str:
+        """Applies the indexing normalization, so lookups hit the stored form of a value."""
+        token = (str(value).lower().replace('\\', '').replace('\'', '').replace('\"', '')
+                 .replace('\t', '').replace('\n', '').replace('\r', '').strip()[0:200])
+        return '' if token in ('nan', 'none') else token
 
     
     @staticmethod

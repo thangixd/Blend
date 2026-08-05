@@ -60,41 +60,43 @@ class Retriever:
     def retrieve(self, query: str, k: int, n: int, alpha: float,
                  table_filter: TableFilter = EMPTY_FILTER, rerank: bool = True) -> List[int]:
         """Returns the TableIds of the top-k tables for the query, in rank order."""
-        # Upstream Pneuma hands retrieve() the raw query string, which bm25s iterates
-        # character by character and scores as zero. Tokenizing is the fix.
         query_tokens = bm25s.tokenize(query, stopwords='en', stemmer=self.stemmer, show_progress=False)
         query_embedding = self.embedder.encode([query])[0]
 
         texts = {}
         bm25_raw = {}
         vector_raw = {}
-        if table_filter.is_empty():
-            pooled = min(k * n, len(self._bm25.corpus))
-            if pooled == 0:
+        if table_filter.allow is None:
+            # A deny-list only needs the global pool widened by its size; an allow-list
+            # would push the top-k outside the permitted set, so only that case skips it.
+            fetched = min(k * n + len(table_filter.deny or ()), len(self._bm25.corpus))
+            if fetched == 0:
                 return []
-            bm25_documents, bm25_scores = self._bm25.retrieve(query_tokens, k=pooled, show_progress=False)
-            vector_results = self._collection.query(query_embeddings=[query_embedding], n_results=pooled)
+            bm25_documents, bm25_scores = self._bm25.retrieve(query_tokens, k=fetched, show_progress=False)
+            vector_results = self._collection.query(query_embeddings=[query_embedding], n_results=fetched)
 
             for document, score in zip(bm25_documents[0], bm25_scores[0]):
                 document_id = document['metadata']['table']
+                if not table_filter.permits(Schema.parse_table_id(document_id)):
+                    continue
                 texts[document_id] = document['text']
                 bm25_raw[document_id] = float(score)
 
             for document_id, document, distance in zip(vector_results['ids'][0],
                                                        vector_results['documents'][0],
                                                        vector_results['distances'][0]):
+                if not table_filter.permits(Schema.parse_table_id(document_id)):
+                    continue
                 texts.setdefault(document_id, document)
                 vector_raw[document_id] = 1 - float(distance)
 
             document_ids = list(bm25_raw) + [i for i in vector_raw if i not in bm25_raw]
         else:
-            # Pooling globally and filtering after would take the top-k outside the
-            # allow-list, so every permitted document is scored on both sides instead.
             document_ids = [i for i in self._corpus_positions
                             if table_filter.permits(Schema.parse_table_id(i))]
-            pooled = min(k * n, len(document_ids))
-            if pooled == 0:
-                return []
+        pooled = min(k * n, len(document_ids))
+        if pooled == 0:
+            return []
 
         self._backfill_bm25(query_tokens, bm25_raw, document_ids)
         self._backfill_vector(query_embedding, vector_raw, texts, document_ids)

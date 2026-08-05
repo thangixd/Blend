@@ -21,7 +21,7 @@ def load_id_map(db_path: Path, dataset: str) -> Dict[int, str]:
 
 
 def run_family(ini_path: Path, questions: List[Question], family: str,
-               combos: List[Tuple[int, int, float]], id_map: Dict[int, str],
+               combos: List[Tuple[int, int, float, bool]], id_map: Dict[int, str],
                out_jsonl: Path, plan_factory: Optional[Callable] = None) -> List[dict]:
     if plan_factory is None:
         from src.Tasks.NLSearch import NLSearch

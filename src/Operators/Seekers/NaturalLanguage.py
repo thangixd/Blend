@@ -25,7 +25,7 @@ class NaturalLanguage(Seeker):
         # SQL below, so the top-k is taken inside the allow-list instead of after the cut.
         table_ids = self._retrieve(db, additionals)
         if len(table_ids) == 0:
-            return f"SELECT TableId FROM (SELECT 0 AS TableId, 0 AS nl_rank WHERE 1=0) AS {db.random_subquery_name()}"
+            return "SELECT TableId FROM AllTables WHERE 1=0"
 
         # table_ids_to_sql drops the ordering, and retrieval rank is the point of this seeker.
         rows = ' UNION ALL '.join(f'SELECT {table_id} AS TableId, {rank} AS nl_rank'

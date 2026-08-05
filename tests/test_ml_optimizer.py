@@ -33,6 +33,34 @@ def test_token_frequencies_missing_token_defaults_to_one():
     assert db.get_token_frequencies(['zz_no_such_token_zz'])['zz_no_such_token_zz'] == 1
 
 
+def _frequent_token(db):
+    return db.execute_and_fetchall(
+        "SELECT CellValue FROM AllTables WHERE lower(CellValue) <> upper(CellValue) "
+        "GROUP BY CellValue HAVING COUNT(*) > 1 ORDER BY CellValue LIMIT 1")[0][0]
+
+
+def test_token_frequencies_normalize_case_like_the_index():
+    db = _db()
+    token = _frequent_token(db)
+    expected = db.execute_and_fetchall(
+        f"SELECT COUNT(*) FROM AllTables WHERE CellValue = '{token}'")[0][0]
+    assert db.get_token_frequencies([token.upper()])[token.upper()] == expected
+
+
+def test_token_frequencies_strip_quotes_like_the_index():
+    db = _db()
+    token = _frequent_token(db)
+    expected = db.execute_and_fetchall(
+        f"SELECT COUNT(*) FROM AllTables WHERE CellValue = '{token}'")[0][0]
+    quoted = token[:1] + "'" + token[1:]
+    assert db.get_token_frequencies([quoted])[quoted] == expected
+
+
+def test_token_frequencies_drop_nan_tokens():
+    db = _db()
+    assert db.get_token_frequencies(['nan', 'None', '  ']) == {}
+
+
 def test_sc_features_shape():
     db = _db()
     sc = SingleColumnOverlap(['road-350-w', 'll road frame - black- 44'], k=10)

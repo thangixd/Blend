@@ -32,6 +32,19 @@ jobs:
           --datalake tests/tasks/datalake
           --db tests/test_duckdb.db
 
+      # Runs without the nl extra, which keeps the seekers importable without it.
+      - name: Run unit tests
+        run: |
+          uv run python tests/test_ml_optimizer.py
+          uv run python tests/test_predicate.py
+          uv run python tests/test_nl_seeker.py
+
+      - name: Run NL unit tests
+        run: |
+          uv sync --extra nl
+          uv run python tests/test_nl_summarizer.py
+          uv run python tests/test_nl_index_generator.py
+
       # The case list comes from the test file so the two cannot drift apart.
       # Each case runs in its own log group and a failure does not stop the rest.
       - name: Run plan tests

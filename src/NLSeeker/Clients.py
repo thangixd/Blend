@@ -101,7 +101,10 @@ class LLMClient:
             top_p=1.0,
             seed=42,
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if content is None:
+            raise ValueError(f'{self._model} returned a completion without content')
+        return content
 
 
 class EmbeddingClient:

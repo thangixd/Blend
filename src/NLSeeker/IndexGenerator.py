@@ -45,7 +45,15 @@ class IndexGenerator:
         else:
             table_ids = list(table_ids)
 
-        documents = [document for table_id in table_ids for document in self._documents(table_id)]
+        documents = []
+        missing = []
+        for table_id in table_ids:
+            table_documents = self._documents(table_id)
+            if not table_documents:
+                missing.append(table_id)
+            documents.extend(table_documents)
+        if missing:
+            raise ValueError(f'Tables {missing} have no summaries or contexts; run the summarizer first.')
         if not documents:
             raise ValueError('No summaries or contexts to index; run the summarizer first.')
 

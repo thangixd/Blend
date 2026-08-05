@@ -26,7 +26,7 @@ class Seeker(Operator, ABC):
         freqs = db.get_token_frequencies(set().union(*columns))
         prod = 1
         for col in columns:
-            prod *= sum(freqs[token] for token in set(db.clean_value_collection(col)) if token in freqs)
+            prod *= sum(freqs[token] for token in set(col) if token in freqs)
 
         return [len(set(rows)), prod ** (1 / len(columns)), len(columns)]
 
