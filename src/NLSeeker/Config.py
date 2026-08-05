@@ -18,7 +18,6 @@ class NLSeekerConfig:
     llm_temperature: float
     llm_max_new_tokens: int
     llm_context_length: int
-    llm_chat_template_overhead: int
     llm_concurrency: int
     llm_retry_attempts: int
     llm_tokenizer: str
@@ -59,8 +58,8 @@ class NLSeekerConfig:
         section = parser['NLSeeker']
 
         casts = {'out_path': Path, 'llm_temperature': float, 'llm_max_new_tokens': int,
-                 'llm_context_length': int, 'llm_chat_template_overhead': int, 'llm_concurrency': int,
-                 'llm_retry_attempts': int, 'embedding_max_tokens': int, 'embedding_batch_size': int,
+                 'llm_context_length': int, 'llm_concurrency': int, 'llm_retry_attempts': int,
+                 'embedding_max_tokens': int, 'embedding_batch_size': int,
                  'alpha': float, 'n': int}
 
         values = {}

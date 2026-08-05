@@ -142,7 +142,9 @@ def parse_args():
     parser.add_argument('--sep', default=',', help='CSV separator.')
     parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                         help='Index rows to buffer before writing to DuckDB.')
-    parser.add_argument('--metadata', default=None, help='Metadata file or directory to register as context.')
+    parser.add_argument('--metadata', default=None,
+                        help='Metadata file or directory to register as context '
+                             '(.csv with table_id/value columns, or <tableid>.txt).')
     parser.add_argument('--no-blend-index', action='store_true', help='Skip the inverted index.')
     parser.add_argument('--no-nl-index', action='store_true', help='Skip the NL index.')
     parser.add_argument('--reject-duplicates', action='store_true',
@@ -162,6 +164,9 @@ def main():
         raise NotADirectoryError(f'Lake directory not found: {lake_dir}')
     if args.no_blend_index and args.no_nl_index:
         raise ValueError('Nothing to build: --no-blend-index and --no-nl-index are both set.')
+    if args.reject_duplicates and not args.no_blend_index:
+        raise ValueError('--reject-duplicates needs --no-blend-index: the inverted index keeps every '
+                         'file, so skipping duplicates would make the TableId sets diverge.')
 
     config = NLSeekerConfig.load(args.config)
 

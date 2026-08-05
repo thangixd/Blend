@@ -42,7 +42,7 @@ class LLMClient:
         self._temperature = config.llm_temperature
         self._max_new_tokens = config.llm_max_new_tokens
         self._context_length = config.llm_context_length
-        self._chat_template_overhead = config.llm_chat_template_overhead
+        self._overhead = None
         self._concurrency = config.llm_concurrency
         self._retry_attempts = config.llm_retry_attempts
         self._tokenizer = _LazyTokenizer(config.llm_tokenizer)
@@ -53,9 +53,11 @@ class LLMClient:
         if max_new_tokens is None:
             max_new_tokens = self._max_new_tokens
 
-        # The endpoint applies the chat template server-side, so its cost is configured rather
-        # than measured with a local apply_chat_template.
-        budget = self._context_length - self._chat_template_overhead - max_new_tokens
+        budget = self._context_length - self._template_overhead() - max_new_tokens
+        if budget <= 0:
+            raise ValueError(f'llm_context_length={self._context_length} leaves no prompt budget '
+                             f'after the chat template ({self._overhead} tokens) and '
+                             f'max_new_tokens={max_new_tokens}')
         conversations = [[{**head, 'content': self._tokenizer.truncate(head['content'], budget)}, *rest]
                          for head, *rest in conversations]
 
@@ -67,6 +69,20 @@ class LLMClient:
 
         with ThreadPoolExecutor(max_workers=self._concurrency) as executor:
             return list(tqdm(executor.map(answer, conversations), total=len(conversations), desc=desc))
+
+    def _template_overhead(self) -> int:
+        """Tokens the chat template wraps around the message content."""
+        # The endpoint owns the template, so the cost is measured against it rather than
+        # rendered locally: usage.prompt_tokens on an empty message is exactly that overhead.
+        if self._overhead is None:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=[{'role': 'user', 'content': ''}],
+                max_tokens=1,
+                temperature=self._temperature,
+            )
+            self._overhead = response.usage.prompt_tokens
+        return self._overhead
 
     def _complete_one(self, conversation: List[Dict[str, str]], max_new_tokens: int) -> str:
         for _ in range(max(self._retry_attempts - 1, 0)):
@@ -98,12 +114,16 @@ class EmbeddingClient:
         self._tokenizer = _LazyTokenizer(config.embedding_tokenizer)
         self.max_tokens = config.embedding_max_tokens
 
+    @property
+    def content_budget(self) -> int:
+        """How many tokens of text fit in the window once the special tokens are accounted for."""
+        return self.max_tokens - SPECIAL_TOKEN_OVERHEAD
+
     def encode(self, documents: List[str]) -> List[List[float]]:
         """Embeds every document, in input order."""
         # A single summary block can exceed the window on its own, which a local
         # SentenceTransformer would truncate silently and an endpoint rejects instead.
-        budget = self.max_tokens - SPECIAL_TOKEN_OVERHEAD
-        documents = [self._tokenizer.truncate(document, budget) for document in documents]
+        documents = [self._tokenizer.truncate(document, self.content_budget) for document in documents]
 
         embeddings = []
         for start in range(0, len(documents), self._batch_size):

@@ -82,12 +82,12 @@ def is_content(document_id: str) -> bool:
 
 
 def block(items: List[str], joiner: str, budget: int, count_tokens: Callable[[str], int]) -> List[str]:
-    """Greedily concatenates items into blocks that stay within the embedding budget."""
+    """Greedily concatenates items into blocks that stay under the embedding budget."""
     blocks = []
     current = ''
     for item in items:
         candidate = item if not current else current + joiner + item
-        if current and count_tokens(candidate) > budget:
+        if current and count_tokens(candidate) >= budget:
             blocks.append(current)
             current = item
         else:

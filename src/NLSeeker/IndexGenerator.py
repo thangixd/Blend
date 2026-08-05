@@ -83,7 +83,7 @@ class IndexGenerator:
 
         contexts = self._payloads('SELECT context FROM table_contexts WHERE table_id = ? ORDER BY id',
                                   [str(table_id)])
-        merged = Schema.block(contexts, Schema.CONTEXT_JOINER, self.embedder.max_tokens,
+        merged = Schema.block(contexts, Schema.CONTEXT_JOINER, self.embedder.content_budget,
                               self.embedder.count_tokens)
         for index, text in enumerate(merged):
             documents.append((Schema.context_id(table_id, index), text))

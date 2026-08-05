@@ -7,12 +7,11 @@ from duckdb import DuckDBPyConnection
 from src.NLSeeker.Clients import EmbeddingClient, LLMClient
 from typing import Iterable, List, Optional
 
-NARRATION_PROMPT = """A table has the following columns:
+NARRATION_PROMPT = '''A table has the following columns:
 /*
 {columns}
 */
-Describe briefly what the {column} column represents. If not possible, simply state "No description."
-"""
+Describe briefly what the {column} column represents. If not possible, simply state "No description."'''
 
 NARRATION_MAX_TOKENS = 400
 ROW_SAMPLE_SIZE = 5
@@ -29,15 +28,17 @@ class Summarizer:
         Schema.use_schema(connection, schema)
 
     def summarize(self, table_ids: Optional[Iterable[int]] = None) -> List[int]:
-        """Summarizes the given tables, or every table still marked REGISTERED."""
-        if table_ids is None:
-            rows = self.connection.execute(
-                'SELECT id FROM table_status WHERE status = ? ORDER BY CAST(id AS INTEGER)',
-                [Schema.REGISTERED],
-            ).fetchall()
-            table_ids = [int(row[0]) for row in rows]
-        else:
-            table_ids = list(table_ids)
+        """Summarizes the still-REGISTERED tables among the given ones, or all of them."""
+        sql = 'SELECT id FROM table_status WHERE status = ?'
+        parameters = [Schema.REGISTERED]
+        if table_ids is not None:
+            table_ids = [str(table_id) for table_id in table_ids]
+            if not table_ids:
+                return []
+            sql += f" AND id IN ({', '.join('?' * len(table_ids))})"
+            parameters += table_ids
+        rows = self.connection.execute(sql + ' ORDER BY CAST(id AS INTEGER)', parameters).fetchall()
+        table_ids = [int(row[0]) for row in rows]
 
         if not table_ids:
             return []
@@ -68,11 +69,11 @@ class Summarizer:
         if df.empty:
             return []
         sample = df.sample(n=min(len(df), ROW_SAMPLE_SIZE), random_state=0)
-        return [' | '.join(f'{column}: {value}' for column, value in row.items())
+        return [' | '.join(f'{column}: {value}' for column, value in row.items()).strip()
                 for _, row in sample.iterrows()]
 
     def _block(self, items: List[str]) -> List[str]:
-        return Schema.block(items, Schema.SUMMARY_JOINER, self.embedder.max_tokens,
+        return Schema.block(items, Schema.SUMMARY_JOINER, self.embedder.content_budget,
                             self.embedder.count_tokens)
 
     def _insert(self, table_id: int, summary_type: str, blocks: List[str]) -> None:

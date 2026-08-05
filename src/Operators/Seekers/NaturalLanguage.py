@@ -19,7 +19,9 @@ class NaturalLanguage(Seeker):
         self.index_name = index_name
 
     def create_sql_query(self, db: DBHandler, additionals: str = "") -> str:
-        table_ids = self._retrieve(db)
+        # A combiner's TableId predicate is pushed into retrieval rather than spliced into the
+        # SQL below, so the top-k is taken inside the allow-list instead of after the cut.
+        table_ids = self._retrieve(db, additionals)
         if len(table_ids) == 0:
             return f"SELECT TableId FROM (SELECT 0 AS TableId, 0 AS nl_rank WHERE 1=0) AS {db.random_subquery_name()}"
 
@@ -40,9 +42,10 @@ class NaturalLanguage(Seeker):
     def ml_cost(self, db: DBHandler) -> float:
         return 1.0
 
-    def _retrieve(self, db: DBHandler) -> List[int]:
+    def _retrieve(self, db: DBHandler, additionals: str) -> List[int]:
         from dataclasses import replace
         from src.NLSeeker.Config import NLSeekerConfig
+        from src.NLSeeker.Predicate import parse_additionals
 
         config = NLSeekerConfig.load(db.config_path)
         if self.index_name is not None:
@@ -51,7 +54,8 @@ class NaturalLanguage(Seeker):
         retriever = _load_retriever(config)
         return retriever.retrieve(self.query, k=self.k,
                                   n=config.n if self.n is None else self.n,
-                                  alpha=config.alpha if self.alpha is None else self.alpha)
+                                  alpha=config.alpha if self.alpha is None else self.alpha,
+                                  table_filter=parse_additionals(additionals))
 
 
 def _load_retriever(config):

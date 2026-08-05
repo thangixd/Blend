@@ -32,7 +32,8 @@ class Registrar:
         return registered
 
     def add_metadata(self, metadata_path: Union[str, Path], table_id: Optional[int] = None) -> int:
-        """Registers context from a .txt file (needs table_id) or a .csv with table_id and value columns."""
+        """Registers context from a .txt file (named `<tableid>.txt` unless table_id is given) or a
+        .csv with table_id and value columns."""
         metadata_path = Path(metadata_path)
         if metadata_path.is_dir():
             return sum(self.add_metadata(child) for child in sorted(metadata_path.rglob('*'))
@@ -40,7 +41,10 @@ class Registrar:
 
         if metadata_path.suffix == '.txt':
             if table_id is None:
-                raise ValueError(f'{metadata_path} needs an explicit table_id')
+                if not metadata_path.stem.isdigit():
+                    raise ValueError(f'{metadata_path} needs an explicit table_id '
+                                     f'or a TableId filename like 12.txt')
+                table_id = int(metadata_path.stem)
             self._insert_context(table_id, metadata_path.read_text())
             return 1
 
@@ -54,8 +58,11 @@ class Registrar:
 
     def _register(self, table_id: int, path: Path, creator: str, accept_duplicates: bool) -> bool:
         reader = self._reader(path)
+        # Row order from a parallel CSV scan is not deterministic, so the aggregate
+        # orders by the row text to keep the hash stable across runs.
         table_hash = self.connection.execute(
-            f'SELECT md5(string_agg(source::text, \'\')) FROM {reader} AS source', [str(path)]
+            f'SELECT md5(string_agg(source::text, \'\' ORDER BY source::text)) FROM {reader} AS source',
+            [str(path)]
         ).fetchone()[0]
 
         if not accept_duplicates:
