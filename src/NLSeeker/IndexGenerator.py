@@ -107,9 +107,12 @@ class IndexGenerator:
         client = chromadb.PersistentClient(str(self.vector_path))
         collection = client.create_collection(name=index_name, configuration=HNSW_CONFIGURATION)
 
+        # The backend (sqlite) caps how many rows a single add() can carry; that cap
+        # varies by install, so the fixed chunk size must not exceed it.
+        chunk_size = min(VECTOR_CHUNK_SIZE, client.get_max_batch_size())
         try:
-            for start in range(0, len(documents), VECTOR_CHUNK_SIZE):
-                chunk = documents[start:start + VECTOR_CHUNK_SIZE]
+            for start in range(0, len(documents), chunk_size):
+                chunk = documents[start:start + chunk_size]
                 texts = [text for _, text in chunk]
                 collection.add(ids=[document_id for document_id, _ in chunk],
                                documents=texts,
