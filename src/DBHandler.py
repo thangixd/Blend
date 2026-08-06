@@ -9,7 +9,7 @@ from numbers import Number
 
 
 class DBHandler(object):
-    USE_ML_OPTIMIZER = True
+    USE_ML_OPTIMIZER = False
 
     def __init__(self) -> None:
         self.connection = None
