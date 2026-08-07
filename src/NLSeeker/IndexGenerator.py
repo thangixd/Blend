@@ -1,35 +1,27 @@
 import json
-import shutil
 
-import bm25s
-import chromadb
-import Stemmer
+import pandas as pd
 
-from src.NLSeeker import Schema
+from src.NLSeeker import Schema, Tokenizer
 
 # Typing imports
 from duckdb import DuckDBPyConnection
-from pathlib import Path
 from src.NLSeeker.Clients import EmbeddingClient
 from typing import Iterable, List, Optional, Tuple
 
-VECTOR_CHUNK_SIZE = 30000
 
-# chromadb 1.x dropped hnsw:random_seed, so graph construction is no longer seeded and
-# near-ties may reorder between rebuilds.
-HNSW_CONFIGURATION = {'hnsw': {'space': 'cosine', 'max_neighbors': 48}}
+EMBEDDING_CHUNK_SIZE = 2000
 
 
 class IndexGenerator:
-    """Builds the vector and full-text indexes from the stored summaries and contexts."""
+    """Builds the document and token tables from the stored summaries and contexts."""
 
     def __init__(self, connection: DuckDBPyConnection, schema: str, embedder: EmbeddingClient,
-                 vector_path: Path, fulltext_path: Path) -> None:
+                 documents_table: str, tokens_table: str) -> None:
         self.connection = connection
         self.embedder = embedder
-        self.vector_path = vector_path
-        self.fulltext_path = fulltext_path
-        self.stemmer = Stemmer.Stemmer('english')
+        self.documents_table = documents_table
+        self.tokens_table = tokens_table
         Schema.use_schema(connection, schema)
 
     def generate_index(self, index_name: str, table_ids: Optional[Iterable[int]] = None,
@@ -57,19 +49,16 @@ class IndexGenerator:
         if not documents:
             raise ValueError('No summaries or contexts to index; run the summarizer first.')
 
-        self._build_vector_index(index_name, documents)
-        self._build_fulltext_index(index_name, documents)
-        self._record(index_name, str(self.vector_path), table_ids)
-        self._record(index_name, str(self.fulltext_path), table_ids)
+        self._write_documents(documents)
+        self._write_tokens(documents)
+        self._record(index_name, self.documents_table, table_ids)
+        self._record(index_name, self.tokens_table, table_ids)
         return len(documents)
 
     def _drop_index(self, index_name: str) -> None:
         """Removes a previous build of this index so the script can be re-run."""
-        if self.vector_path.exists():
-            client = chromadb.PersistentClient(str(self.vector_path))
-            if index_name in [collection.name for collection in client.list_collections()]:
-                client.delete_collection(index_name)
-        shutil.rmtree(self.fulltext_path / index_name, ignore_errors=True)
+        self.connection.execute(f'DROP TABLE IF EXISTS main."{self.documents_table}"')
+        self.connection.execute(f'DROP TABLE IF EXISTS main."{self.tokens_table}"')
 
         index_ids = [row[0] for row in self.connection.execute(
             'SELECT id FROM indexes WHERE name = ?', [index_name]).fetchall()]
@@ -102,33 +91,58 @@ class IndexGenerator:
         return [json.loads(row[0])['payload']
                 for row in self.connection.execute(sql, parameters).fetchall()]
 
-    def _build_vector_index(self, index_name: str, documents: List[Tuple[str, str]]) -> None:
-        self.vector_path.mkdir(parents=True, exist_ok=True)
-        client = chromadb.PersistentClient(str(self.vector_path))
-        collection = client.create_collection(name=index_name, configuration=HNSW_CONFIGURATION)
+    def _write_documents(self, documents: List[Tuple[str, str]]) -> None:
+        dimension = None
+        for start in range(0, len(documents), EMBEDDING_CHUNK_SIZE):
+            chunk = documents[start:start + EMBEDDING_CHUNK_SIZE]
+            texts = [text for _, text in chunk]
+            embeddings = self.embedder.encode(texts)
 
-        # The backend (sqlite) caps how many rows a single add() can carry; that cap
-        # varies by install, so the fixed chunk size must not exceed it.
-        chunk_size = min(VECTOR_CHUNK_SIZE, client.get_max_batch_size())
+            if dimension is None:
+                dimension = len(embeddings[0])
+                self.connection.execute(f"""CREATE TABLE main."{self.documents_table}" (
+                    docid VARCHAR PRIMARY KEY,
+                    tableid INTEGER NOT NULL,
+                    text VARCHAR NOT NULL,
+                    length INTEGER NOT NULL,
+                    embedding FLOAT[{dimension}] NOT NULL
+                    )""")
+
+            frame = pd.DataFrame({
+                'docid': [document_id for document_id, _ in chunk],
+                'tableid': [Schema.parse_table_id(document_id) for document_id, _ in chunk],
+                'text': texts,
+                'length': [len(Tokenizer.tokenize(text)) for text in texts],
+                'embedding': embeddings,
+            })
+            self._insert(f'main."{self.documents_table}"', frame,
+                         f'docid, tableid, text, length, CAST(embedding AS FLOAT[{dimension}])')
+
+        self.connection.execute(
+            f'CREATE INDEX "{self.documents_table}_to_tableid" '
+            f'ON main."{self.documents_table}" (tableid)')
+
+    def _write_tokens(self, documents: List[Tuple[str, str]]) -> None:
+        rows = [(document_id, token, frequency)
+                for document_id, text in documents
+                for token, frequency in Tokenizer.term_frequencies(text).items()]
+        frame = pd.DataFrame(rows, columns=['docid', 'token', 'tf'])
+
+        self.connection.execute(f"""CREATE TABLE main."{self.tokens_table}" (
+            docid VARCHAR NOT NULL,
+            token VARCHAR NOT NULL,
+            tf INTEGER NOT NULL
+            )""")
+        self._insert(f'main."{self.tokens_table}"', frame, 'docid, token, tf')
+        self.connection.execute(
+            f'CREATE INDEX "{self.tokens_table}_to_token" ON main."{self.tokens_table}" (token)')
+
+    def _insert(self, table: str, frame: pd.DataFrame, projection: str) -> None:
+        self.connection.register('index_df', frame)
         try:
-            for start in range(0, len(documents), chunk_size):
-                chunk = documents[start:start + chunk_size]
-                texts = [text for _, text in chunk]
-                collection.add(ids=[document_id for document_id, _ in chunk],
-                               documents=texts,
-                               embeddings=self.embedder.encode(texts))
-        except Exception:
-            client.delete_collection(index_name)
-            raise
-
-    def _build_fulltext_index(self, index_name: str, documents: List[Tuple[str, str]]) -> None:
-        corpus = [{'text': text, 'metadata': {'table': document_id}} for document_id, text in documents]
-        tokens = bm25s.tokenize([text for _, text in documents], stopwords='en',
-                                stemmer=self.stemmer, show_progress=False)
-
-        retriever = bm25s.BM25(corpus=corpus)
-        retriever.index(tokens, show_progress=False)
-        retriever.save(str(self.fulltext_path / index_name), corpus=corpus)
+            self.connection.execute(f'INSERT INTO {table} SELECT {projection} FROM index_df')
+        finally:
+            self.connection.unregister('index_df')
 
     def _record(self, index_name: str, location: str, table_ids: List[int]) -> None:
         index_id = self.connection.execute(

@@ -40,6 +40,28 @@ def test_sql_cuts_to_k():
     assert [row[0] for row in rows] == [4, 7]
 
 
+def test_additionals_reach_the_retriever_unparsed():
+    seen = {}
+
+    def _retrieve(db, additionals):
+        seen['additionals'] = additionals
+        return []
+
+    nl = NaturalLanguage('anything', k=3)
+    nl._retrieve = _retrieve
+    nl.create_sql_query(_db(), additionals=' AND TableId IN (4, 7) ')
+    assert seen['additionals'] == ' AND TableId IN (4, 7) '
+
+
+def test_predicate_module_is_gone():
+    import importlib
+    try:
+        importlib.import_module('src.NLSeeker.Predicate')
+    except ModuleNotFoundError:
+        return
+    raise AssertionError('src/NLSeeker/Predicate.py should have been deleted')
+
+
 if __name__ == '__main__':
     for name, fn in sorted(globals().items()):
         if name.startswith('test_') and callable(fn):

@@ -16,8 +16,10 @@ Dependencies are managed with [uv](https://docs.astral.sh/uv/). `pyproject.toml`
 
 ```bash
 uv sync                 # core: token seekers only
-uv sync --extra nl      # + openai, chromadb, bm25s, tokenizers - needed for the NaturalLanguage seeker
-uv sync --all-extras    # + fastparquet, needed only by the GitTables loader
+uv sync --extra nl      # + openai, PyStemmer, tokenizers, huggingface-hub - needed for the NaturalLanguage seeker
+uv sync --extra index   # + fastparquet, needed only by the GitTables loader
+uv sync --extra test    # + bm25s, PyStemmer - only needed by tests/test_nl_bm25_parity.py and tests/test_nl_tokenizer.py
+uv sync --all-extras    # nl, index, test, and eval (pyyaml, for evaluation/nlseeker/)
 ```
 
 ## Inference endpoints (NaturalLanguage seeker only)
@@ -37,7 +39,6 @@ path=blend_duckdb.db
 index_table=my_lake
 
 [NLSeeker]
-out_path=nl_index
 index_name=my_lake
 schema=nl_my_lake
 
@@ -68,7 +69,9 @@ index together.
 
 ## Index generation
 Build the inverted index and the natural-language index over one lake of CSV files, sharing
-TableIds (endpoints must be up for the NL side):
+TableIds. Both indexes live as tables in the same `.db`
+file: the NL side adds `<index_name>_nl_documents` and `<index_name>_nl_tokens` beside the
+inverted index table, plus a bookkeeping schema (`schema=` above) for summaries and status.
 
 ```bash
 uv run python -m scripts.create_index_nl_blend_duckdb \

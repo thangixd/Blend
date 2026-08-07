@@ -22,12 +22,13 @@ index = [
 ]
 nl = [
     "openai>=1.63.2",
-    "chromadb>=1.5",
-    "bm25s==0.1.10",
     "PyStemmer>=2.2.0.3",
     "tokenizers>=0.21",
     "huggingface-hub>=0.26",
-    "scipy>=1.14",
+]
+test = [
+    "bm25s==0.1.10",
+    "PyStemmer>=2.2.0.3",
 ]
 eval = [
     "pyyaml>=6.0.3",

@@ -10,8 +10,8 @@ from evaluation.nlseeker.datasets import DATASETS, FAMILIES
 from typing import Dict, List, Optional, Tuple
 
 
-# Exactly the NLSeekerConfig ini keys the YAML must provide. out_path, index_name,
-# schema, alpha and n are derived per dataset/run and must not appear here.
+# Exactly the NLSeekerConfig ini keys the YAML must provide. index_name, schema,
+# alpha and n are derived per dataset/run and must not appear here.
 NLSEEKER_KEYS = frozenset({
     'llm_base_url', 'llm_api_key', 'llm_model', 'llm_temperature', 'llm_max_new_tokens',
     'llm_context_length', 'llm_concurrency', 'llm_retry_attempts', 'llm_tokenizer',

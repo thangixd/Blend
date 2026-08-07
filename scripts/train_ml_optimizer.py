@@ -138,8 +138,9 @@ def collect_token_seeker(name: str, db: DBHandler, rng: random.Random, samples: 
 def generate_questions(config, count: int, rng: random.Random, db: DBHandler) -> List[str]:
     from src.NLSeeker.Clients import LLMClient
 
-    if not config.vector_path.exists():
-        raise RuntimeError(f'NL index not found at {config.vector_path} - build it first '
+    tables = {row[0] for row in db.execute_and_fetchall('SELECT table_name FROM information_schema.tables')}
+    if config.documents_table not in tables:
+        raise RuntimeError(f'NL index not found ({config.documents_table} missing) - build it first '
                            '(scripts/create_index_nl_blend_duckdb.py)')
 
     rows = db.execute_and_fetchall(
@@ -165,7 +166,7 @@ def collect_natural_language(db: DBHandler, rng: random.Random, samples: int):
     config = NLSeekerConfig.load(db.config_path)
     questions = generate_questions(config, samples, rng, db)
 
-    NaturalLanguage(questions[0], k=5).run()  # warm-up: loads Chroma and BM25s once, untimed
+    NaturalLanguage(questions[0], k=5).run()  # warm-up: builds and caches the LLM/embedding clients, untimed
 
     def build():
         return NaturalLanguage(questions.pop(),

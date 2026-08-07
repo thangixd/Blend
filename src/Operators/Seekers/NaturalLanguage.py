@@ -21,8 +21,8 @@ class NaturalLanguage(Seeker):
         self.rerank = rerank
 
     def create_sql_query(self, db: DBHandler, additionals: str = "") -> str:
-        # A combiner's TableId predicate is pushed into retrieval rather than spliced into the
-        # SQL below, so the top-k is taken inside the allow-list instead of after the cut.
+        # The predicate is spliced into the retrieval query rather than the SQL below, so the
+        # top-k is taken inside the allow-list instead of after the cut.
         table_ids = self._retrieve(db, additionals)
         if len(table_ids) == 0:
             return "SELECT TableId FROM AllTables WHERE 1=0"
@@ -52,26 +52,25 @@ class NaturalLanguage(Seeker):
     def _retrieve(self, db: DBHandler, additionals: str) -> List[int]:
         from dataclasses import replace
         from src.NLSeeker.Config import NLSeekerConfig
-        from src.NLSeeker.Predicate import parse_additionals
 
         config = NLSeekerConfig.load(db.config_path)
         if self.index_name is not None:
             config = replace(config, index_name=self.index_name)
 
-        retriever = _load_retriever(config)
-        return retriever.retrieve(self.query, k=self.k,
+        retriever = _load_retriever(db.config_path, config)
+        return retriever.retrieve(db, self.query, k=self.k,
                                   n=config.n if self.n is None else self.n,
                                   alpha=config.alpha if self.alpha is None else self.alpha,
-                                  table_filter=parse_additionals(additionals),
+                                  additionals=additionals,
                                   rerank=self.rerank)
 
 
-def _load_retriever(config):
-    """Keeps one Retriever per index so a plan does not reload Chroma and BM25s per operator."""
+def _load_retriever(config_path, config):
+    """Keeps one Retriever per index so a plan does not rebuild the inference clients per operator."""
     from src.NLSeeker.Clients import EmbeddingClient, LLMClient
     from src.NLSeeker.Retriever import Retriever
 
-    key = (str(config.out_path), config.index_name)
+    key = (str(config_path), config.index_name)
     if key not in _retrievers:
         _retrievers[key] = Retriever(config, LLMClient(config), EmbeddingClient(config))
     return _retrievers[key]

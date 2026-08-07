@@ -93,8 +93,7 @@ def write_ini(artifacts_dir: Path, dataset: str, nlseeker: Dict[str, str],
     artifacts_dir = Path(artifacts_dir).resolve()
     lines = ['[Database]', 'dbms=duckdb', f'path={artifacts_dir / "eval.duckdb"}',
              f'index_table={dataset}', '', '[NLSeeker]',
-             f'out_path={artifacts_dir / "nl_index"}', f'index_name={dataset}',
-             f'schema=nl_{dataset}']
+             f'index_name={dataset}', f'schema=nl_{dataset}']
     lines += [f'{key}={value}' for key, value in nlseeker.items()]
     lines += [f'alpha={alpha}', f'n={n}', '']
     ini = artifacts_dir / 'nlseeker.ini'

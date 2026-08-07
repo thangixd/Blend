@@ -36,14 +36,22 @@ jobs:
       - name: Run unit tests
         run: |
           uv run python tests/test_ml_optimizer.py
-          uv run python tests/test_predicate.py
           uv run python tests/test_nl_seeker.py
+          uv run python tests/test_dbhandler_parameters.py
+          uv run python tests/test_nl_config.py
 
       - name: Run NL unit tests
         run: |
           uv sync --extra nl
           uv run python tests/test_nl_summarizer.py
           uv run python tests/test_nl_index_generator.py
+          uv run python tests/test_nl_retriever.py
+
+      - name: Run NL+test unit tests
+        run: |
+          uv sync --extra nl --extra test
+          uv run python tests/test_nl_tokenizer.py
+          uv run python tests/test_nl_bm25_parity.py
 
       # The case list comes from the test file so the two cannot drift apart.
       # Each case runs in its own log group and a failure does not stop the rest.

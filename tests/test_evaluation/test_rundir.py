@@ -64,6 +64,5 @@ def test_write_ini_layout(tmp_path):
     assert parser['Database']['index_table'] == 'adventure_works'
     assert parser['Database']['path'] == str(tmp_path / 'eval.duckdb')
     assert parser['NLSeeker']['schema'] == 'nl_adventure_works'
-    assert parser['NLSeeker']['out_path'] == str(tmp_path / 'nl_index')
     assert parser['NLSeeker']['alpha'] == '0.5'
     assert parser['NLSeeker']['llm_base_url'] == 'http://x/v1'

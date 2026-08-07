@@ -8,7 +8,6 @@ from typing import Union
 
 @dataclass(frozen=True)
 class NLSeekerConfig:
-    out_path: Path
     index_name: str
     schema: str
 
@@ -33,16 +32,12 @@ class NLSeekerConfig:
     n: int
 
     @property
-    def index_path(self) -> Path:
-        return self.out_path / self.index_name
+    def documents_table(self) -> str:
+        return f'{self.index_name}_nl_documents'
 
     @property
-    def vector_path(self) -> Path:
-        return self.index_path / 'vector'
-
-    @property
-    def fulltext_path(self) -> Path:
-        return self.index_path / 'fulltext'
+    def tokens_table(self) -> str:
+        return f'{self.index_name}_nl_tokens'
 
     @staticmethod
     def load(config_path: Union[str, Path]) -> 'NLSeekerConfig':
@@ -57,7 +52,7 @@ class NLSeekerConfig:
             raise KeyError(f'{config_path} has no [NLSeeker] section')
         section = parser['NLSeeker']
 
-        casts = {'out_path': Path, 'llm_temperature': float, 'llm_max_new_tokens': int,
+        casts = {'llm_temperature': float, 'llm_max_new_tokens': int,
                  'llm_context_length': int, 'llm_concurrency': int, 'llm_retry_attempts': int,
                  'embedding_max_tokens': int, 'embedding_batch_size': int,
                  'alpha': float, 'n': int}

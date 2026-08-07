@@ -34,8 +34,7 @@ data/Evaluation/NLSeeker/results/<ts>__<tag>/
   summary.md
   <dataset>/
     artifacts/
-      eval.duckdb
-      nl_index/
+      eval.duckdb           # inverted index, NL document/token tables and NL bookkeeping schema
       nlseeker.ini
     per_query.jsonl        # qid, family, k, n, alpha, retrieved/answer ids, hit, rr, latency_ms
 ```
