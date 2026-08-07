@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 # Typing imports
-from typing import List, Union, Tuple, Iterable
+from typing import List, Optional, Union, Tuple, Iterable
 from numbers import Number
 
 
@@ -77,7 +77,7 @@ class DBHandler(object):
     def clean_query(self, query: str) -> str:
         return query.replace('AllTables', f'{self.index_table}')
 
-    def execute_and_fetchall(self, query: str) -> List[Union[Tuple, List]]:
+    def execute_and_fetchall(self, query: str, parameters: Optional[List] = None) -> List[Union[Tuple, List]]:
         """Returns results"""
         query = self.clean_query(query)
         # TO_BITSTRING is Vertica-only; everywhere else the super key column
@@ -86,7 +86,10 @@ class DBHandler(object):
             query = query.replace('TO_BITSTRING(superkey)', 'superkey')
         query = query.replace('CellValue', 'tokenized').replace("superkey", "super_key").replace("ColumnId", "colid")
 
-        self.cursor.execute(query)
+        if parameters is None:
+            self.cursor.execute(query)
+        else:
+            self.cursor.execute(query, parameters)
         results = self.cursor.fetchall()
 
         return results

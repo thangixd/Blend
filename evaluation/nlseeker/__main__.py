@@ -80,11 +80,8 @@ def preflight(cfg: EvalConfig, datasets_dir: Path) -> dict:
 
 
 def _versions() -> dict:
-    import bm25s
-    import chromadb
     import duckdb
-    return {'python': sys.version.split()[0], 'duckdb': duckdb.__version__,
-            'chromadb': chromadb.__version__, 'bm25s': bm25s.__version__}
+    return {'python': sys.version.split()[0], 'duckdb': duckdb.__version__}
 
 
 def _run_dataset(cfg: EvalConfig, run: RunDir, name: str) -> None:

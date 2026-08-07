@@ -124,7 +124,7 @@ def build_nl_index(dbcon, config: NLSeekerConfig, assignment, metadata: str, acc
 
     Summarizer(dbcon, config.schema, llm, embedder).summarize()
 
-    generator = IndexGenerator(dbcon, config.schema, embedder, config.vector_path, config.fulltext_path)
+    generator = IndexGenerator(dbcon, config.schema, embedder, config.documents_table, config.tokens_table)
     print(f'Indexed {generator.generate_index(config.index_name, replace=True)} documents.')
 
 
@@ -193,7 +193,7 @@ def main():
     finally:
         dbcon.close()
 
-    print(f'\nIndexes written to {args.db} and {config.index_path}. To query them, set in {args.config}:')
+    print(f'\nIndexes written to {args.db}. To query them, set in {args.config}:')
     print(f'  dbms=duckdb\n  path={args.db}\n  index_table={args.lake}')
     print(f'  [NLSeeker] index_name={config.index_name}  schema={config.schema}')
 
